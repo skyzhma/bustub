@@ -89,6 +89,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
                 *frame_id = pair.first;
 
             }
+            
         } else if (tmp == inf_flag) {
             if (pair.second->GetFrontHistory() < time_stamp) {
                 time_stamp =  pair.second->GetFrontHistory();
