@@ -34,8 +34,6 @@ class LRUKNode {
   size_t k_;
   frame_id_t fid_;
   bool is_evictable_{false};
-  size_t size_;
-  size_t least_k_time_stamp_;
 
   public:
     LRUKNode(frame_id_t fid, size_t cur_time_stamp, size_t k);
@@ -43,7 +41,6 @@ class LRUKNode {
     void SetEvictable(bool status);
     auto IsEvictable() -> bool;
     void AddHistory(size_t cur_time_stamp);
-    void RemoveHistory();
     auto GetTimeStamp() -> size_t;
     auto GetFrontHistory() -> size_t;
 
@@ -78,7 +75,7 @@ class LRUKReplacer {
    *
    * @brief Destroys the LRUReplacer.
    */
-  ~LRUKReplacer() = default;
+  ~LRUKReplacer();
 
   /**
    * TODO(P1): Add implementation
@@ -159,8 +156,6 @@ class LRUKReplacer {
    * @return size_t
    */
   auto Size() -> size_t;
-
-  auto GetCurrentTimeStamp() -> size_t;
  
  private:
   // TODO(student): implement me! You can replace these member variables as you like.

@@ -22,11 +22,9 @@ namespace bustub {
 
 LRUKNode::LRUKNode(frame_id_t fid, size_t cur_time_stamp, size_t k) {
     fid_ = fid;
-    size_ = 1;
     k_ = k;
     is_evictable_ = true;
     history_.push_back(cur_time_stamp);
-    least_k_time_stamp_ = inf_flag;
 }
 
 void LRUKNode::SetEvictable(bool status) {
@@ -40,25 +38,15 @@ auto LRUKNode::IsEvictable() -> bool {
 void LRUKNode::AddHistory(size_t cur_time_stamp) {
     if (history_.size() == k_) {
         history_.pop_front();
-    } else {
-        size_++;
     }
     history_.push_back(cur_time_stamp);
-    if (size_ == k_) {
-        least_k_time_stamp_ = history_.front();
-    }
-}
-
-void LRUKNode::RemoveHistory() {
-    if (size_ == k_) {
-        history_.pop_front();
-        size_--;
-        least_k_time_stamp_ = inf_flag;
-    }
 }
 
 auto LRUKNode::GetTimeStamp() -> size_t {
-    return least_k_time_stamp_;
+    if (history_.size() == k_) {
+        return GetFrontHistory();
+    }
+    return inf_flag;
 }
 
 auto LRUKNode::GetFrontHistory() -> size_t {
@@ -66,6 +54,13 @@ auto LRUKNode::GetFrontHistory() -> size_t {
 }
 
 LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
+
+LRUKReplacer::~LRUKReplacer() {
+    for (auto& pair : node_store_) {
+        delete pair.second;
+    }
+    node_store_.clear();
+}
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool { 
     
@@ -76,37 +71,38 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
     latch_.lock();
 
     for (auto& pair : node_store_) {
-        if (!pair.second.IsEvictable()) {
+        if (!pair.second->IsEvictable()) {
             continue;
         }
 
-        size_t tmp = pair.second.GetTimeStamp();
+        size_t tmp = pair.second->GetTimeStamp();
 
         if (!inf) {
             if (tmp == inf_flag) {
-                time_stamp = pair.second.GetFrontHistory();
+                time_stamp = pair.second->GetFrontHistory();
                 *frame_id = pair.first;
-                node = &pair.second;
+                node = pair.second;
                 inf = true;
             } else if (tmp < time_stamp) {
                 time_stamp = tmp;
-                node = &pair.second;
+                node = pair.second;
                 *frame_id = pair.first;
 
             }
         } else if (tmp == inf_flag) {
-            if (pair.second.GetFrontHistory() < time_stamp) {
-                time_stamp =  pair.second.GetFrontHistory();
-                node = &pair.second;
+            if (pair.second->GetFrontHistory() < time_stamp) {
+                time_stamp =  pair.second->GetFrontHistory();
+                node = pair.second;
                 *frame_id = pair.first;
             }
         }
     }
 
     if (time_stamp != inf_flag) {
-        node_store_.erase(*frame_id);
         delete node;   
+        node_store_.erase(*frame_id);
         status = true;     
+        curr_size_--;
     }
 
     latch_.unlock();
@@ -126,11 +122,11 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
                 return;
             }
         }
-        auto *node = new LRUKNode(frame_id, GetCurrentTimeStamp(), k_);
+        auto *node = new LRUKNode(frame_id, current_timestamp_++, k_);
         curr_size_++;
-        node_store_.emplace(frame_id, *node);
+        node_store_.emplace(frame_id, node);
     } else {
-        node_store_.at(frame_id).AddHistory(GetCurrentTimeStamp());
+        node_store_.at(frame_id)->AddHistory(current_timestamp_++);
     }
 
     latch_.unlock();
@@ -146,13 +142,13 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
         throw Exception("The frame_id is not in the list");
     }
 
-    bool is_evictable = node_store_.at(frame_id).IsEvictable();
+    bool is_evictable = node_store_.at(frame_id)->IsEvictable();
     if (!is_evictable && set_evictable) {
         curr_size_++;
     } else if (is_evictable && !set_evictable) {
         curr_size_--;
     }
-    node_store_.at(frame_id).SetEvictable(set_evictable);
+    node_store_.at(frame_id)->SetEvictable(set_evictable);
 
     latch_.unlock();
 }
@@ -166,13 +162,13 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
         throw Exception("Can't remove frame that's not in the cache");
     }
 
-    auto* node = &it->second;
+    auto* node = it->second;
     if (node->IsEvictable()) {
         curr_size_--;
     }
-    node_store_.erase(frame_id);
 
     delete node;
+    node_store_.erase(frame_id);
 
     latch_.unlock();
 }
@@ -182,13 +178,6 @@ auto LRUKReplacer::Size() -> size_t {
     size_t tmp = curr_size_;
     latch_.unlock();
     return tmp; 
-}
-
-auto LRUKReplacer::GetCurrentTimeStamp() -> size_t {
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    std::chrono::seconds seconds_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
-    current_timestamp_ = static_cast<size_t>(seconds_since_epoch.count());
-    return current_timestamp_;
 }
 
 }  // namespace bustub
