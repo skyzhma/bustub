@@ -23,6 +23,7 @@ TEST(TrieDebugger, TestCase) {
     std::string key = fmt::format("{}", dis(gen));
     auto value = dis(gen);
     trie = trie.Put<uint32_t>(key, value);
+    std::cout << key << " " << value << std::endl;
   }
 
   // Put a breakpoint here.
