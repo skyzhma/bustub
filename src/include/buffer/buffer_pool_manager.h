@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -171,6 +172,8 @@ class BufferPoolManager {
    * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
    */
   auto DeletePage(page_id_t page_id) -> bool;
+
+  auto GetReplacerCurrSize() -> size_t;
 
  private:
   /** Number of pages in the buffer pool. */

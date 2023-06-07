@@ -198,6 +198,11 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   return true;
 }
 
+auto BufferPoolManager::GetReplacerCurrSize() -> size_t {
+  return 0;
+
+}
+
 auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
 
 auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
