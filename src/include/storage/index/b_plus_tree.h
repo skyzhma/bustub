@@ -84,6 +84,10 @@ class BPlusTree {
   // Return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 
+  auto Find(const KeyType &key) -> page_id_t;
+
+
+
   // Index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
 
@@ -138,6 +142,8 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
   page_id_t header_page_id_;
+
+  page_id_t root_page_id_;
 };
 
 /**

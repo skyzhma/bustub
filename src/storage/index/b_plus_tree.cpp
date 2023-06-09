@@ -1,10 +1,13 @@
 #include <sstream>
 #include <string>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
 #include "storage/index/b_plus_tree.h"
+#include "storage/page/b_plus_tree_internal_page.h"
+#include "storage/page/b_plus_tree_leaf_page.h"
 
 namespace bustub {
 
@@ -20,13 +23,14 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
   WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
   auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
   root_page->root_page_id_ = INVALID_PAGE_ID;
+  root_page_id_ = INVALID_PAGE_ID;
 }
 
 /*
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return bpm_->; }
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return root_page_id_ == INVALID_PAGE_ID; }
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -40,7 +44,22 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // Declaration of context instance.
   Context ctx;
   (void)ctx;
+
+
+  page_id_t leaf_page_id = Find(key);
+  if (leaf_page_id == INVALID_PAGE_ID) {
+    return false;
+  }
+
+  auto guard = bpm_->FetchPageBasic(leaf_page_id);
+  auto page = guard.AsMut<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  ValueType v;
+  if (page->LookUp(key, comparator_, v)) {
+    result->push_back(v);
+    return true;
+  }
   return false;
+  
 }
 
 /*****************************************************************************
@@ -58,6 +77,8 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   // Declaration of context instance.
   Context ctx;
   (void)ctx;
+
+  
   return false;
 }
 
@@ -109,7 +130,30 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return 0; }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::Find(const KeyType &key) -> page_id_t {
+
+  if (IsEmpty()) {
+    return INVALID_PAGE_ID;
+  }
+
+  auto guard = bpm_->FetchPageBasic(root_page_id_);
+  while (!guard.AsMut<BPlusTreePage>()->IsLeafPage()) {
+    auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+    ValueType t;
+    page->LookUp(key, comparator_, t);
+    auto child_guard = bpm_->FetchPageBasic(t.GetPageId());
+
+    // execute the deconstructor function of current guard (unpin the page)
+    guard = std::move(child_guard);
+  }
+
+  return guard.PageId();
+
+}
+
 
 /*****************************************************************************
  * UTILITIES AND DEBUG

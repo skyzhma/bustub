@@ -84,6 +84,25 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     return kstr;
   }
 
+  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
+
+    int i = 0;
+    int j = GetSize();
+    while (i <= j) {
+      int t = (i + j) / 2;
+      int res = comp(KeyAt(t), key);
+      if (res > 0) {
+        j = t - 1;
+      } else if (res < 0) {
+        i = t + 1;
+      } else {
+        v = array_[t].second;
+        return true;
+      }
+    }
+    return false;
+  }
+
  private:
   page_id_t next_page_id_;
   // Flexible array member for page data.

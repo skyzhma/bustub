@@ -99,6 +99,25 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return kstr;
   }
 
+  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v){
+
+    int i = 1;
+    int j = GetSize();
+    while (i <= j) {
+      int t = (i + j) / 2;
+      int res = comp(KeyAt(t), key);
+      if (res > 0) {
+        i = t + 1;
+      } else if (res < 0) {
+        j = t - 1;
+      } else {
+        v = array_[t].second;
+      }
+    }
+    
+    v = array_[i-1].second;
+  }
+
  private:
   // Flexible array member for page data.
   MappingType array_[0];
