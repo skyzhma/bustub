@@ -99,7 +99,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto FindIndex(const KeyType &key, KeyComparator comp, ValueType &v) -> int {
+  auto FindIndex(const KeyType &key, KeyComparator comp) -> int {
     
     int i = 1;
     int j = GetSize();
@@ -119,7 +119,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   }
 
   void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
-    int index = FindIndex(key);
+    int index = FindIndex(key, comp);
     if (index == 1) {
       if (comp(key, KeyAt(1)) == 0) {
         v = array_[index].second;
@@ -132,7 +132,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   }
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
-    int index = FindIndex(key);
+    int index = FindIndex(key, comp);
     if (index < GetSize() && comp(key, array_[index].first) == 0) {
       return false;
     }
@@ -155,6 +155,11 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   auto PairAt(int index) -> MappingType {
     return array_[index];
+  }
+
+  auto SetPair(int index, KeyType k, ValueType v) {
+    array_[index].first = k;
+    array_[index].second = v;
   }
 
  private:

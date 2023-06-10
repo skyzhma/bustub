@@ -165,21 +165,47 @@ void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_i
     parent_page->Insert(key, comparator_, v);
     return ;
   }
-
-  // Reach the size of maximum 
-  page_id_t parent_right_page_id;
-  auto right_guard = bpm_->NewPageGuarded(&parent_right_page_id);
-  auto parent_right_page = right_guard.As<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
-
-  parent_right_page->SetSize(1);
-
-  for (int i = leaf_max_size_ / 2; i < leaf_max_size_; i++) {
-    MappingType pair = parent_page->PairAt(i);
-    parent_right_page->Insert(pair.first, comparator_, pair.second);
-
-    
+  
+  // copy data to a big array
+  ValueType v;
+  v.Set(right_page_id, 0);
+  int j = parent_page->FindIndex(key, comparator_);
+  MappingType array[internal_max_size_+1];
+  int index = 0;
+  for (int i = 0; i < j; i++) {
+    array[index++] = parent_page->PairAt(i);
+  }
+  array[index].first = key;
+  array[index++].second = v;
+  for (int i = j; i < parent_page->GetSize(); i++) {
+    array[index++] = parent_page->PairAt(i);
   }
 
+  // Split a new parent page 
+  page_id_t parent_right_page_id;
+  auto right_guard = bpm_->NewPageGuarded(&parent_right_page_id);
+  auto parent_right_page = right_guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+  parent_right_page->SetSize(1);
+
+  for (int i = 0; i < parent_page->GetMinSize(); i++) {
+    parent_page->SetPair(i, array[i].first, array[i].second);
+  }
+  parent_page->SetSize(parent_page->GetMinSize());
+
+  // the key transfer to the upper parent
+  parent_right_page->SetValue(0, array[parent_page->GetMinSize()].second);
+
+  // copy data to the right page
+  index = 1;
+  for (int i = parent_page->GetMinSize()+1; i <= internal_max_size_; i++) {
+    parent_right_page->SetPair(index++, array[i].first, array[j].second);
+  }
+  
+  // Update Size
+  parent_right_page->SetSize(internal_max_size_ + 1 - parent_page->GetMinSize());
+
+  // Iteratively update parent
+  InsertParent(left_guard.PageId(), parent_right_page_id, array[parent_page->GetMinSize()].first, ctx);
 
 }
 
