@@ -84,23 +84,48 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
-
+  auto FindIndex(const KeyType &key, KeyComparator comp, ValueType &v) -> int {
+    
     int i = 0;
     int j = GetSize();
-    while (i <= j) {
+    while (i < j) {
       int t = (i + j) / 2;
       int res = comp(KeyAt(t), key);
       if (res > 0) {
-        j = t - 1;
-      } else if (res < 0) {
         i = t + 1;
+      } else if (res < 0) {
+        j = t;
       } else {
-        v = array_[t].second;
-        return true;
+        return t;
       }
     }
-    return false;
+
+    return i;
+  }
+
+  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
+
+    int index = FindIndex(key);
+    v = array_[index].second;
+    
+  }
+
+  auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
+    int index = FindIndex(key);
+    if (index < GetSize() && comp(key, array_[index].first) == 0) {
+      return false;
+    }
+    for (int i = GetSize(); i >= index; i--) {
+      array_[i+1]  = array_[i];
+    }
+    array_[index].first = key;
+    array_[index].second = v;
+    IncreaseSize(1);
+    return true;
+  }
+
+  auto PairAt(int index) const -> MappingType {
+    return array_[index];
   }
 
  private:

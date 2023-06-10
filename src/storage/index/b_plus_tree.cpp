@@ -8,6 +8,7 @@
 #include "storage/index/b_plus_tree.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
+#include "storage/page/page_guard.h"
 
 namespace bustub {
 
@@ -78,9 +79,110 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   Context ctx;
   (void)ctx;
 
+  // Lock the whole b+ tree when inserting key value pair
+  auto header_guard = bpm_->FetchPageWrite(header_page_id_);
+
+  ctx.header_page_ = std::move(header_guard);
+
+  if (IsEmpty()) {
+    // If the root page is null, create a new root page
+    auto guard = bpm_->NewPageGuarded(&root_page_id_);
+    auto root_page = header_guard.AsMut<BPlusTreeHeaderPage>();
+    root_page->root_page_id_ = root_page_id_;
+  }
+
+  // record the root page id
+  ctx.root_page_id_ = root_page_id_;
+
+  // Get the leaf page and insert the key-value to the leaf page
+  // If insert fail, then return false
+  auto leaf_page_id = FindLeafPage(key, ctx);
+  WritePageGuard guard = bpm_->FetchPageWrite(leaf_page_id);
+  auto leaf_page = guard.AsMut<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  if (!leaf_page->Insert(key, comparator_, value)) {
+    return false;
+  }
+
+  // Insert succeed. Check if need to split the leaf node
+  if (leaf_page->GetSize() != leaf_max_size_) {
+    return true;
+  }
   
-  return false;
+  page_id_t split_page_id;
+  auto split_page_guard = bpm_->NewPageGuarded(&split_page_id);
+  auto split_page = split_page_guard.AsMut<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  for (int i = leaf_max_size_ / 2; i < leaf_max_size_; i++) {
+    MappingType pair = leaf_page->PairAt(i);
+    split_page->Insert(pair.first, comparator_, pair.second);
+  }
+  leaf_page->IncreaseSize(leaf_max_size_ - leaf_max_size_ / 2);
+  split_page->SetNextPageId(leaf_page->GetNextPageId());
+  leaf_page->SetNextPageId(split_page_id);
+
+  // Insert into parent
+
+  InsertParent(guard.PageId(), split_page_guard.PageId(), split_page->KeyAt(0), ctx);
+
+  // drop the header page id (unlock the tree)
+  ctx.header_page_->Drop();
+  ctx.header_page_ = std::nullopt;
+
+  return true;
+
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_id, KeyType key, Context &ctx) {
+
+  if (ctx.write_set_.empty()) {
+    auto guard = bpm_->NewPageGuarded(&root_page_id_);
+    auto header_page = ctx.header_page_->AsMut<BPlusTreeHeaderPage>();
+    header_page->root_page_id_ = root_page_id_;
+
+    auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+    ValueType v1;
+    ValueType v2;
+    page->SetKey(1, key);
+    v1.Set(left_page_id, 0);
+    v2.Set(right_page_id, 0);
+    page->SetValue(0, v1);
+    page->SetValue(1, v2);
+    page->SetSize(2);
+    return ;
+
+  }
+
+  // Get the parent
+  auto left_guard = std::move(ctx.write_set_.back());
+  ctx.write_set_.pop_back();
+
+  // check the size of the parent
+  auto parent_page = left_guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+  if (parent_page->GetSize() < internal_max_size_) {
+    // Insert into the Internal page
+    ValueType v;
+    v.Set(right_page_id, 0);
+    parent_page->Insert(key, comparator_, v);
+    return ;
+  }
+
+  // Reach the size of maximum 
+  page_id_t parent_right_page_id;
+  auto right_guard = bpm_->NewPageGuarded(&parent_right_page_id);
+  auto parent_right_page = right_guard.As<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+
+  parent_right_page->SetSize(1);
+
+  for (int i = leaf_max_size_ / 2; i < leaf_max_size_; i++) {
+    MappingType pair = parent_page->PairAt(i);
+    parent_right_page->Insert(pair.first, comparator_, pair.second);
+
+    
+  }
+
+
+}
+
 
 /*****************************************************************************
  * REMOVE
@@ -133,19 +235,22 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Find(const KeyType &key) -> page_id_t {
+auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, Context &ctx) -> page_id_t {
 
   if (IsEmpty()) {
     return INVALID_PAGE_ID;
   }
 
-  auto guard = bpm_->FetchPageBasic(root_page_id_);
+  auto guard = bpm_->FetchPageWrite(root_page_id_);
   while (!guard.AsMut<BPlusTreePage>()->IsLeafPage()) {
+
+    ctx.write_set_.push_back(std::move(guard));
+
     auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
     ValueType t;
     page->LookUp(key, comparator_, t);
-    auto child_guard = bpm_->FetchPageBasic(t.GetPageId());
 
+    auto child_guard = bpm_->FetchPageWrite(t.GetPageId());
     // execute the deconstructor function of current guard (unpin the page)
     guard = std::move(child_guard);
   }

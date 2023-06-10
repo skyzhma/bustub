@@ -99,23 +99,62 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v){
-
+  auto FindIndex(const KeyType &key, KeyComparator comp, ValueType &v) -> int {
+    
     int i = 1;
     int j = GetSize();
-    while (i <= j) {
+    while (i < j) {
       int t = (i + j) / 2;
       int res = comp(KeyAt(t), key);
       if (res > 0) {
         i = t + 1;
       } else if (res < 0) {
-        j = t - 1;
+        j = t;
       } else {
-        v = array_[t].second;
+        return t;
       }
     }
-    
-    v = array_[i-1].second;
+
+    return i;
+  }
+
+  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
+    int index = FindIndex(key);
+    if (index == 1) {
+      if (comp(key, KeyAt(1)) == 0) {
+        v = array_[index].second;
+      } else {
+        v = array_[0].second;
+      }
+    } else {
+      v = array_[index].second;
+    }
+  }
+
+  auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
+    int index = FindIndex(key);
+    if (index < GetSize() && comp(key, array_[index].first) == 0) {
+      return false;
+    }
+    for (int i = GetSize(); i >= index; i--) {
+      array_[i+1]  = array_[i];
+    }
+    array_[index].first = key;
+    array_[index].second = v;
+    IncreaseSize(1);
+    return true;
+  }
+
+  auto SetValue(int index, ValueType &v) {
+    array_[index].second = v;
+  }
+
+  auto SetKey(int index, KeyType &key) {
+    array_[index].first = key;
+  }
+
+  auto PairAt(int index) -> MappingType {
+    return array_[index];
   }
 
  private:
