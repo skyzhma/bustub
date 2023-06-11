@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "storage/index/index_iterator.h"
+#include "storage/page/b_plus_tree_leaf_page.h"
 
 namespace bustub {
 
@@ -16,41 +17,40 @@ INDEXITERATOR_TYPE::IndexIterator() = default;
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *buffer_pool_manager, page_id_t page_id, int index)
-    : bpm_(buffer_pool_manager), page_id_(page_id), index_(index), page_(nullptr) {
-  if (page_id != INVALID_PAGE_ID) {
-    guard_ = bpm_->FetchPageRead(page_id);
-    page_ = guard_.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
-  }
+    : bpm_(buffer_pool_manager), page_id_(page_id), index_(index) {
+
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::~IndexIterator() { guard_.Drop(); }  // NOLINT
+INDEXITERATOR_TYPE::~IndexIterator() { }  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
   if (page_id_ == INVALID_PAGE_ID) {
     return true;
   }
-  if (page_->GetNextPageId() == INVALID_PAGE_ID && index_ == page_->GetMaxSize()) {
-    return true;
-  }
-
-  return false;
+  auto guard = bpm_->FetchPageRead(page_id_);
+  auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  return static_cast<bool>(page->GetNextPageId() == INVALID_PAGE_ID && index_ == page->GetMaxSize());
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { return page_->GetPair(index_); }
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { 
+  auto guard = bpm_->FetchPageRead(page_id_);
+  auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  return page->GetPair(index_); 
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   index_ += 1;
-  if (index_ == page_->GetSize()) {
-    if (page_->GetNextPageId() != INVALID_PAGE_ID) {
+  auto guard = bpm_->FetchPageRead(page_id_);
+  auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  if (index_ == page->GetSize()) {
+    if (page->GetNextPageId() != INVALID_PAGE_ID) {
       index_ = 0;
-      auto child_guard = bpm_->FetchPageRead(page_->GetNextPageId());
-      guard_ = std::move(child_guard);
+      page_id_ = page->GetNextPageId();
     } else {
-      guard_.Drop();
       bpm_ = nullptr;
       page_id_ = INVALID_PAGE_ID;
       index_ = -1;

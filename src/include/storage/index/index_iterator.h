@@ -47,8 +47,6 @@ class IndexIterator {
   BufferPoolManager *bpm_;
   page_id_t page_id_;
   int index_;
-  const BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *page_;
-  ReadPageGuard guard_;
 };
 
 }  // namespace bustub
