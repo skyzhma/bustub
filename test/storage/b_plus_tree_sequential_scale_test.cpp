@@ -56,14 +56,14 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
   // randomized the insertion order
   auto rng = std::default_random_engine{};
   std::shuffle(keys.begin(), keys.end(), rng);
-  int step = 0;
+  // int step = 0;
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
     tree.Insert(index_key, rid, transaction);
-    tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) + ".dot");
-
+    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step" + std::to_string(step++) + "_insert" +
+    // std::to_string(key) + ".dot"); std::cout << step << std::endl;
   }
   std::vector<RID> rids;
   for (auto key : keys) {

@@ -47,7 +47,6 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param max_size Maximal size of the page
    */
   void Init(int max_size = INTERNAL_PAGE_SIZE) {
-
     SetPageType(IndexPageType::INTERNAL_PAGE);
     SetSize(0);
     SetMaxSize(max_size);
@@ -57,18 +56,14 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param index The index of the key to get. Index must be non-zero.
    * @return Key at index
    */
-  auto KeyAt(int index) const -> KeyType {
-    return array_[index].first;
-  }
+  auto KeyAt(int index) const -> KeyType { return array_[index].first; }
 
   /**
    *
    * @param index The index of the key to set. Index must be non-zero.
    * @param key The new value for key
    */
-  void SetKeyAt(int index, const KeyType &key) {
-    array_[index].first = key;
-  }
+  void SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
 
   /**
    *
@@ -81,9 +76,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param index the index
    * @return the value at the index
    */
-  auto ValueAt(int index) const -> page_id_t {
-    return array_[index].second;
-  }
+  auto ValueAt(int index) const -> page_id_t { return array_[index].second; }
 
   /**
    * @brief For test only, return a string representing all keys in
@@ -117,9 +110,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 
-  auto SetValueAt(int index, const page_id_t &v) {
-    array_[index].second = v;
-  }
+  auto SetValueAt(int index, const page_id_t &v) { array_[index].second = v; }
 
   auto SetPair(int index, KeyType k, page_id_t v) {
     array_[index].first = k;
@@ -130,6 +121,5 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   // Flexible array member for page data.
   // std::pair<KeyType, page_id_t> array_[0];
   MappingType array_[0];
-
 };
 }  // namespace bustub

@@ -57,7 +57,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     SetSize(0);
     SetMaxSize(max_size);
     next_page_id_ = INVALID_PAGE_ID;
-  };
+  }
 
   // helper methods
   auto GetNextPageId() const -> page_id_t;
@@ -100,13 +100,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     array_[index].second = value;
   }
 
-  auto ValueAt(int index) const -> ValueType {
-    return array_[index].second;
-  }
+  auto ValueAt(int index) const -> ValueType { return array_[index].second; }
 
-  auto GetPair(int index) const -> const MappingType & {
-    return array_[index];
-  }
+  auto GetPair(int index) const -> const MappingType & { return array_[index]; }
 
  private:
   page_id_t next_page_id_;

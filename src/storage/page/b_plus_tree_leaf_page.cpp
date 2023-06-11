@@ -40,7 +40,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return next_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {next_page_id_ = next_page_id; }
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
 /*
  * Helper method to find and return the key associated with input "index"(a.k.a
@@ -54,7 +54,6 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator comp) -> int {
-  
   int i = 0;
   int j = GetSize();
   while (i < j) {
@@ -72,15 +71,13 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator com
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
-
-    int index = FindIndex(key, comp);
-    if (index < GetSize() && comp(key, array_[index].first) == 0) {
-      v = array_[index].second;
-      return true;
-    }
-    return false;
-    
+  int index = FindIndex(key, comp);
+  if (index < GetSize() && comp(key, array_[index].first) == 0) {
+    v = array_[index].second;
+    return true;
   }
+  return false;
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
@@ -89,7 +86,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, 
     return false;
   }
   for (int i = GetSize(); i >= index; i--) {
-    array_[i+1]  = array_[i];
+    array_[i + 1] = array_[i];
   }
   array_[index].first = key;
   array_[index].second = v;
