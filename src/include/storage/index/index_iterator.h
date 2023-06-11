@@ -26,18 +26,29 @@ class IndexIterator {
   IndexIterator();
   ~IndexIterator();  // NOLINT
 
+  IndexIterator(BufferPoolManager *buffer_pool_manager, page_id_t page_id, int index);
+
   auto IsEnd() -> bool;
 
   auto operator*() -> const MappingType &;
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool { throw std::runtime_error("unimplemented"); }
+  auto operator==(const IndexIterator &itr) const -> bool { 
+    return (bpm_ == itr.bpm_ && page_id_ == itr.page_id_ && index_ == itr.index_);
+   }
 
-  auto operator!=(const IndexIterator &itr) const -> bool { throw std::runtime_error("unimplemented"); }
+  auto operator!=(const IndexIterator &itr) const -> bool { 
+    return (bpm_ != itr.bpm_ || page_id_ != itr.page_id_ || index_ != itr.index_);
+   }
 
  private:
   // add your own private member variables here
+  BufferPoolManager *bpm_;
+  page_id_t page_id_;
+  int index_;
+  const BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *page_;
+  ReadPageGuard guard_;
 };
 
 }  // namespace bustub

@@ -91,50 +91,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   auto FindIndex(const KeyType &key, KeyComparator comp) -> int;
 
-  // auto FindIndex(const KeyType &key, KeyComparator comp) -> int {
-    
-  //   int i = 0;
-  //   int j = GetSize();
-  //   while (i < j) {
-  //     int t = (i + j) / 2;
-  //     int res = comp(key, KeyAt(t));
-  //     if (res > 0) {
-  //       i = t + 1;
-  //     } else if (res < 0) {
-  //       j = t;
-  //     } else {
-  //       return t;
-  //     }
-  //   }
+  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool;
 
-  //   return i;
-  // }
-
-  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
-
-    int index = FindIndex(key, comp);
-    if (index < GetSize() && comp(key, array_[index].first) == 0) {
-      v = array_[index].second;
-      return true;
-    }
-    return false;
-    
-  }
-
-  auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
-    int index = FindIndex(key, comp);
-    std::cout << "Inserting in leaf page, index is" << index << std::endl;
-    if (index < GetSize() && comp(key, array_[index].first) == 0) {
-      return false;
-    }
-    for (int i = GetSize(); i >= index; i--) {
-      array_[i+1]  = array_[i];
-    }
-    array_[index].first = key;
-    array_[index].second = v;
-    IncreaseSize(1);
-    return true;
-  }
+  auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 
   void SetPair(int index, const KeyType &key, const ValueType &value) {
     array_[index].first = key;
@@ -143,6 +102,10 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   auto ValueAt(int index) const -> ValueType {
     return array_[index].second;
+  }
+
+  auto GetPair(int index) const -> const MappingType & {
+    return array_[index];
   }
 
  private:

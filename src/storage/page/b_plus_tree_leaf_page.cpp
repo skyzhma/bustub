@@ -62,14 +62,39 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator com
     int res = comp(key, KeyAt(t));
     if (res > 0) {
       i = t + 1;
-    } else if (res < 0) {
-      j = t;
     } else {
-      return t;
+      j = t;
     }
   }
 
   return i;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
+
+    int index = FindIndex(key, comp);
+    if (index < GetSize() && comp(key, array_[index].first) == 0) {
+      v = array_[index].second;
+      return true;
+    }
+    return false;
+    
+  }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
+  int index = FindIndex(key, comp);
+  if (index < GetSize() && comp(key, array_[index].first) == 0) {
+    return false;
+  }
+  for (int i = GetSize(); i >= index; i--) {
+    array_[i+1]  = array_[i];
+  }
+  array_[index].first = key;
+  array_[index].second = v;
+  IncreaseSize(1);
+  return true;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
