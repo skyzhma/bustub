@@ -54,6 +54,13 @@ class Context {
   std::deque<ReadPageGuard> read_set_;
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
+
+  void ReleaseAll() {
+    while (!write_set_.empty()) {
+      write_set_.front().Drop();
+      write_set_.pop_front();
+    }
+  }
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
