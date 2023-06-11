@@ -13,6 +13,7 @@
 #include <queue>
 #include <string>
 
+#include "common/config.h"
 #include "storage/page/b_plus_tree_page.h"
 
 namespace bustub {
@@ -45,33 +46,44 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * the creation of a new page to make a valid BPlusTreeInternalPage
    * @param max_size Maximal size of the page
    */
-  void Init(int max_size = INTERNAL_PAGE_SIZE);
+  void Init(int max_size = INTERNAL_PAGE_SIZE) {
+
+    SetPageType(IndexPageType::INTERNAL_PAGE);
+    SetSize(0);
+    SetMaxSize(max_size);
+  }
 
   /**
    * @param index The index of the key to get. Index must be non-zero.
    * @return Key at index
    */
-  auto KeyAt(int index) const -> KeyType;
+  auto KeyAt(int index) const -> KeyType {
+    return array_[index].first;
+  }
 
   /**
    *
    * @param index The index of the key to set. Index must be non-zero.
    * @param key The new value for key
    */
-  void SetKeyAt(int index, const KeyType &key);
+  void SetKeyAt(int index, const KeyType &key) {
+    array_[index].first = key;
+  }
 
   /**
    *
    * @param value the value to search for
    */
-  auto ValueIndex(const ValueType &value) const -> int;
+  auto ValueIndex(const page_id_t &value) const -> int;
 
   /**
    *
    * @param index the index
    * @return the value at the index
    */
-  auto ValueAt(int index) const -> ValueType;
+  auto ValueAt(int index) const -> page_id_t {
+    return array_[index].second;
+  }
 
   /**
    * @brief For test only, return a string representing all keys in
@@ -118,7 +130,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return i;
   }
 
-  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
+  void LookUp(const KeyType &key, KeyComparator comp, page_id_t &v) {
     int index = FindIndex(key, comp);
     if (index == 1) {
       if (comp(key, KeyAt(1)) == 0) {
@@ -131,7 +143,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     }
   }
 
-  auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
+  auto Insert(const KeyType &key, KeyComparator comp, const page_id_t &v) -> bool {
     int index = FindIndex(key, comp);
     if (index < GetSize() && comp(key, array_[index].first) == 0) {
       return false;
@@ -145,25 +157,18 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return true;
   }
 
-  auto SetValue(int index, ValueType &v) {
+  auto SetValueAt(int index, const page_id_t &v) {
     array_[index].second = v;
   }
 
-  auto SetKey(int index, KeyType &key) {
-    array_[index].first = key;
-  }
-
-  auto PairAt(int index) -> MappingType {
-    return array_[index];
-  }
-
-  auto SetPair(int index, KeyType k, ValueType v) {
+  auto SetPair(int index, KeyType k, page_id_t v) {
     array_[index].first = k;
     array_[index].second = v;
   }
 
  private:
   // Flexible array member for page data.
-  MappingType array_[0];
+  std::pair<KeyType, page_id_t> array_[0];
+  // MappingType array_[0];
 };
 }  // namespace bustub

@@ -84,7 +84,7 @@ class BPlusTree {
   // Return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 
-  auto FindLeafPage(const KeyType &key, Context &ctx) -> page_id_t;
+  auto FindLeafPage(const KeyType &key, Context &ctx, bool record) -> page_id_t;
 
   void InsertParent(page_id_t left_page_id, page_id_t right_page_id ,KeyType key, Context &ctx);
 

@@ -52,7 +52,12 @@ class BPlusTreeLeafPage : public BPlusTreePage {
    * method to set default values
    * @param max_size Max size of the leaf node
    */
-  void Init(int max_size = LEAF_PAGE_SIZE);
+  void Init(int max_size = LEAF_PAGE_SIZE) {
+    SetPageType(IndexPageType::LEAF_PAGE);
+    SetSize(0);
+    SetMaxSize(max_size);
+    next_page_id_ = INVALID_PAGE_ID;
+  };
 
   // helper methods
   auto GetNextPageId() const -> page_id_t;
@@ -84,34 +89,41 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto FindIndex(const KeyType &key, KeyComparator comp, ValueType &v) -> int {
+  auto FindIndex(const KeyType &key, KeyComparator comp) -> int;
+
+  // auto FindIndex(const KeyType &key, KeyComparator comp) -> int {
     
-    int i = 0;
-    int j = GetSize();
-    while (i < j) {
-      int t = (i + j) / 2;
-      int res = comp(KeyAt(t), key);
-      if (res > 0) {
-        i = t + 1;
-      } else if (res < 0) {
-        j = t;
-      } else {
-        return t;
-      }
+  //   int i = 0;
+  //   int j = GetSize();
+  //   while (i < j) {
+  //     int t = (i + j) / 2;
+  //     int res = comp(key, KeyAt(t));
+  //     if (res > 0) {
+  //       i = t + 1;
+  //     } else if (res < 0) {
+  //       j = t;
+  //     } else {
+  //       return t;
+  //     }
+  //   }
+
+  //   return i;
+  // }
+
+  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool {
+
+    int index = FindIndex(key, comp);
+    if (index < GetSize() && comp(key, array_[index].first) == 0) {
+      v = array_[index].second;
+      return true;
     }
-
-    return i;
-  }
-
-  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
-
-    int index = FindIndex(key);
-    v = array_[index].second;
+    return false;
     
   }
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
-    int index = FindIndex(key);
+    int index = FindIndex(key, comp);
+    std::cout << "Inserting in leaf page, index is" << index << std::endl;
     if (index < GetSize() && comp(key, array_[index].first) == 0) {
       return false;
     }
@@ -124,8 +136,13 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     return true;
   }
 
-  auto PairAt(int index) const -> MappingType {
-    return array_[index];
+  void SetPair(int index, const KeyType &key, const ValueType &value) {
+    array_[index].first = key;
+    array_[index].second = value;
+  }
+
+  auto ValueAt(int index) const -> ValueType {
+    return array_[index].second;
   }
 
  private:

@@ -25,15 +25,13 @@ namespace bustub {
  * Init method after creating a new leaf page
  * Including set page type, set current size to zero, set next page id and set max size
  */
-INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
-  SetPageType(IndexPageType::LEAF_PAGE);
-  SetSize(0);
-  SetMaxSize(max_size);
-  next_page_id_ = INVALID_PAGE_ID;
-
-  
-}
+// INDEX_TEMPLATE_ARGUMENTS
+// void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
+//   SetPageType(IndexPageType::LEAF_PAGE);
+//   SetSize(1);
+//   SetMaxSize(max_size);
+//   next_page_id_ = INVALID_PAGE_ID;
+// }
 
 /**
  * Helper methods to set/get next page id
@@ -51,8 +49,27 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {next_pag
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   // replace with your own code
-  KeyType key{array_[index].first};
-  return key;
+  return array_[index].first;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator comp) -> int {
+  
+  int i = 0;
+  int j = GetSize();
+  while (i < j) {
+    int t = (i + j) / 2;
+    int res = comp(key, KeyAt(t));
+    if (res > 0) {
+      i = t + 1;
+    } else if (res < 0) {
+      j = t;
+    } else {
+      return t;
+    }
+  }
+
+  return i;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
