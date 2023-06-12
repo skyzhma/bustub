@@ -76,7 +76,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param index the index
    * @return the value at the index
    */
-  auto ValueAt(int index) const -> page_id_t { return array_[index].second; }
+  auto ValueAt(int index) const -> ValueType { return array_[index].second; }
 
   /**
    * @brief For test only, return a string representing all keys in

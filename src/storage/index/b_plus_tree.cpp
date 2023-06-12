@@ -255,8 +255,19 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   }
 
   // The leaf page has enough size or this is a root node
-  if (page->GetSize() >= page->GetMinSize() || leaf_page_id == root_page_id_) {
+  if (page->GetSize() >= page->GetMinSize()) {
     ctx.ReleaseAll();
+    return ;
+  }
+
+  // Current tree is null
+  if (leaf_page_id == root_page_id_) {
+    if (page->GetSize() == 0) {
+      root_page_id_ = INVALID_PAGE_ID;
+      WritePageGuard header_guard = bpm_->FetchPageWrite(header_page_id_);
+      auto header_page = header_guard.AsMut<BPlusTreeHeaderPage>();
+      header_page->root_page_id_ = INVALID_PAGE_ID;
+    }
     return ;
   }
 
@@ -265,7 +276,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   auto parent_guard = std::move(ctx.write_set_.back());
   ctx.write_set_.pop_back();
 
-  auto parent_page = parent_guard.AsMut<BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>>();
+  auto parent_page = parent_guard.AsMut<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
   int index = parent_page->FindIndex(key, comparator_);
   
   // Index : the first index that is greater than current key
@@ -302,11 +313,16 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
 
       page->SetSize(page->GetSize() + silbling_page->GetSize());
 
+      page->SetNextPageId(silbling_page->GetNextPageId());
+
       // delete the sibling page
       bpm_->DeletePage(silbling_guard.PageId());
 
+      // page_id_t parent_page_id = parent_guard.PageId();
+      // ctx.write_set_.push_back(std::move(parent_guard));
+
       // The parent are beging locked, no need to push the guard back
-      RemoveParent(parent_guard.PageId(), page->KeyAt(page->GetSize()-1), ctx);
+      RemoveParent(std::move(parent_guard), page->KeyAt(page->GetSize()-1), ctx);
     }
   } else {
     // borrow the key from the left sibling
@@ -337,24 +353,28 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
       silbling_page->SetSize(silbling_page->GetSize() + page->GetSize());
 
       KeyType delete_key = page->KeyAt(0);
+
+      silbling_page->SetNextPageId(page->GetNextPageId());
+
       // delete the page
       bpm_->DeletePage(leaf_page_id);
 
       // Delete the key in parent page
-      RemoveParent(parent_guard.PageId(), delete_key, ctx);
+      RemoveParent(std::move(parent_guard), delete_key, ctx);
 
     }
 
   }
 
-
-
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::RemoveParent(page_id_t page_id, const KeyType &key, Context &ctx) {
+void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Context &ctx) {
 
-  WritePageGuard guard = bpm_->FetchPageWrite(page_id);
+  // WritePageGuard guard = std::move(ctx.write_set_.back());
+  // ctx.write_set_.pop_back();
+
+  // WritePageGuard guard = bpm_->FetchPageWrite(page_id);
   auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
   page->RemoveKey(key, comparator_);
 
@@ -365,14 +385,15 @@ void BPLUSTREE_TYPE::RemoveParent(page_id_t page_id, const KeyType &key, Context
   }
 
   // If this is a root page
-  if (page_id == root_page_id_) {
+  if (guard.PageId() == root_page_id_) {
     if (page->GetSize() == 1) {
       root_page_id_ = page->ValueAt(0);
       WritePageGuard header_guard = bpm_->FetchPageWrite(header_page_id_);
       auto header_page = header_guard.AsMut<BPlusTreeHeaderPage>();
       header_page->root_page_id_ = root_page_id_;
-      bpm_->DeletePage(page_id);
+      bpm_->DeletePage(guard.PageId());
     }
+    guard.Drop();
     return ;
   }
 
@@ -411,10 +432,24 @@ void BPLUSTREE_TYPE::RemoveParent(page_id_t page_id, const KeyType &key, Context
 
     } else {
       // merge the right
+
+      page->SetKeyAt(page->GetSize(), parent_page->KeyAt(index + 1));
+      for (int i = page->GetSize(), j = 0; j < silbling_page->GetSize(); i++, j++) {
+        page->SetValueAt(i, silbling_page->ValueAt(j));
+        if (j >= 1) {
+          page->SetKeyAt(i, silbling_page->KeyAt(j));
+        }
+      }
+      page->SetSize(page->GetSize() + silbling_page->GetSize());
+
+      KeyType delete_key = parent_page->KeyAt(index + 1);
+
+      RemoveParent(std::move(parent_guard), delete_key, ctx);
+
     }
 
   } else {
-    
+
     WritePageGuard silbling_guard = bpm_->FetchPageWrite(parent_page->ValueAt(index-1));
     auto silbling_page = silbling_guard.AsMut<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
 
@@ -437,6 +472,25 @@ void BPLUSTREE_TYPE::RemoveParent(page_id_t page_id, const KeyType &key, Context
         ctx.ReleaseAll();
 
     } else {
+
+        // merge the left silbling page
+
+        silbling_page->SetKeyAt(silbling_page->GetSize(), parent_page->KeyAt(index));
+        for (int i = silbling_page->GetSize(), j = 0; j < page->GetSize(); j++, i++) {
+          silbling_page->SetValueAt(i, page->ValueAt(j));
+          if (j >= 1) {
+            silbling_page->SetKeyAt(i, page->KeyAt(j));
+          }
+        }
+        
+        silbling_page->SetSize(silbling_page->GetSize() + page->GetSize());
+
+        // delete the page
+        bpm_->DeletePage(guard.PageId());
+
+        KeyType delete_key = parent_page->KeyAt(index);
+
+        RemoveParent(std::move(parent_guard), delete_key, ctx);
 
     }
 
@@ -517,7 +571,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert=false) -> page_id_t {
+auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert) -> page_id_t {
   if (IsEmpty()) {
     return INVALID_PAGE_ID;
   }
