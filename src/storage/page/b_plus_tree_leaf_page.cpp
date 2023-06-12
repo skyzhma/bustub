@@ -94,6 +94,32 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, 
   return true;
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveKey(const KeyType &key, KeyComparator comp) -> bool {
+  for (int i = 0; i < GetSize(); i++) {
+    if (comp(key, KeyAt(i)) == 0) {
+      // find the key, remove it
+      for (int j = i; j < GetSize(); j++) {
+        array_[j].first = array_[j+1].first;
+        array_[j].second = array_[j+1].second;
+      }
+      IncreaseSize(-1);
+      return true;
+    }
+  }
+  return false;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveKey(int index) {
+  for (int i = index; i < GetSize(); i++) {
+    array_[i].first = array_[i+1].first;
+    array_[i].second = array_[i+1].second;
+  }
+  IncreaseSize(-1);
+}
+
+
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTreeLeafPage<GenericKey<8>, RID, GenericComparator<8>>;
 template class BPlusTreeLeafPage<GenericKey<16>, RID, GenericComparator<16>>;

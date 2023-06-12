@@ -95,6 +95,10 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 
+  auto RemoveKey(const KeyType &key, KeyComparator comp) -> bool;
+
+  void RemoveKey(int index);
+
   void SetPair(int index, const KeyType &key, const ValueType &value) {
     array_[index].first = key;
     array_[index].second = value;

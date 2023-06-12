@@ -110,6 +110,17 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 
+  void RemoveKey(const KeyType &key, KeyComparator comp) {
+
+    int index = FindIndex(key, comp);
+    for (int i = index; i < GetSize() - 1; i++) {
+      array_[i].first = array_[i+1].first;
+      array_[i].second = array_[i+1].second;
+    }
+    IncreaseSize(-1);
+
+  }
+
   auto SetValueAt(int index, const page_id_t &v) { array_[index].second = v; }
 
   auto SetPair(int index, KeyType k, page_id_t v) {
