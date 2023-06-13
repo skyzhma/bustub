@@ -131,6 +131,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   leaf_page->SetNextPageId(split_page_id);
 
   // Insert into parent
+
   InsertParent(guard.PageId(), split_page_guard.PageId(), split_page->KeyAt(0), ctx);
 
   // Relase all the locks in ctx
@@ -305,6 +306,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
 
       // all good, release the lock along this path 
       ctx.ReleaseAll();
+      
     } else {
       // merge the silbling page
 
@@ -318,6 +320,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
 
       // delete the sibling page
       bpm_->DeletePage(silbling_guard.PageId());
+
+      // release the guard
+      silbling_guard.Drop();
 
       // page_id_t parent_page_id = parent_guard.PageId();
       // ctx.write_set_.push_back(std::move(parent_guard));
@@ -359,6 +364,12 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
 
       // delete the page
       bpm_->DeletePage(leaf_page_id);
+      
+      // delete the page, release the lock
+      guard.Drop();
+
+      // release the silbling_guard
+      silbling_guard.Drop();
 
       // Delete the key in parent page
       RemoveParent(std::move(parent_guard), delete_key, ctx);
@@ -443,6 +454,9 @@ void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Co
       }
       page->SetSize(page->GetSize() + silbling_page->GetSize());
 
+      bpm_->DeletePage(silbling_guard.PageId());
+      silbling_guard.Drop();
+
       KeyType delete_key = parent_page->KeyAt(index + 1);
 
       RemoveParent(std::move(parent_guard), delete_key, ctx);
@@ -486,6 +500,8 @@ void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Co
 
         // delete the page
         bpm_->DeletePage(guard.PageId());
+        guard.Drop();
+        silbling_guard.Drop();
 
         KeyType delete_key = parent_page->KeyAt(index);
 

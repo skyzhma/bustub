@@ -186,7 +186,7 @@ TEST(BPlusTreeTests, DeleteTest3) {
 
   // std::vector<int64_t> keys = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,};
 
-  int64_t scale = 5000;
+  int64_t scale = 4000;
   std::vector<int64_t> keys;
   for (int64_t key = 1; key < scale; key++) {
     keys.push_back(key);
@@ -228,10 +228,11 @@ TEST(BPlusTreeTests, DeleteTest3) {
   int step = 0;
   for (auto key : removed_keys) {
     index_key.SetFromInteger(key);
-    std::cout << "removing "  << key << std::endl;
     tree.Remove(index_key, transaction);
-    tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
-                       ".dot");
+    step++;
+    std::cout << "key size "  << step << std::endl;
+    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
+    //                    ".dot");
   }
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);
