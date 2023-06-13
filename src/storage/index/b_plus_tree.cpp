@@ -280,7 +280,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   int index = parent_page->FindIndex(key, comparator_);
   
   // Index : the first index that is greater than current key
-  if (comparator_(key, page->KeyAt(0)) != 0) {
+   
+  if (index == parent_page->GetSize() || comparator_(key, parent_page->KeyAt(index)) != 0) {
     index--;
   }
 
@@ -352,7 +353,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
 
       silbling_page->SetSize(silbling_page->GetSize() + page->GetSize());
 
-      KeyType delete_key = page->KeyAt(0);
+      KeyType delete_key = parent_page->KeyAt(index);
 
       silbling_page->SetNextPageId(page->GetNextPageId());
 
@@ -403,7 +404,7 @@ void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Co
 
   // The first index that's greate than the key in parent page
   int index = parent_page->FindIndex(key, comparator_);
-  if (comparator_(parent_page->KeyAt(index), key) != 0) {
+  if (index == parent_page->GetSize() || comparator_(parent_page->KeyAt(index), key) != 0) {
     index--;
   }
 
@@ -455,10 +456,8 @@ void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Co
 
     if (silbling_page->GetSize() >= silbling_page->GetMinSize() + 1) {
 
-        for (int i = 1; i < page->GetSize(); i++) {
-          if (i >= 2) {
-            page->SetKeyAt(i, page->KeyAt(i-1));
-          }
+        for (int i = page->GetSize(); i >= 1; i--) {
+          page->SetKeyAt(i, page->KeyAt(i-1));
           page->SetValueAt(i, page->ValueAt(i-1));
         }
 

@@ -93,6 +93,18 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, KeyComparator co
   return true;
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveKey(const KeyType &key, KeyComparator comp) {
+
+    int index = FindIndex(key, comp);
+    for (int i = index; i < GetSize() - 1; i++) {
+      array_[i].first = array_[i+1].first;
+      array_[i].second = array_[i+1].second;
+    }
+    IncreaseSize(-1);
+
+}
+
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t, GenericComparator<8>>;

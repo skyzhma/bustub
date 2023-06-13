@@ -12,6 +12,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <random>
+
 
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
@@ -182,7 +184,18 @@ TEST(BPlusTreeTests, DeleteTest3) {
   // create transaction
   auto *transaction = new Transaction(0);
 
-  std::vector<int64_t> keys = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,};
+  // std::vector<int64_t> keys = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,};
+
+  int64_t scale = 5000;
+  std::vector<int64_t> keys;
+  for (int64_t key = 1; key < scale; key++) {
+    keys.push_back(key);
+  }
+
+  // randomized the insertion order
+  // auto rng = std::default_random_engine{};
+  // std::shuffle(keys.begin(), keys.end(), rng);
+
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
@@ -201,14 +214,23 @@ TEST(BPlusTreeTests, DeleteTest3) {
   //   EXPECT_EQ(rids[0].GetSlotNum(), value);
   // }
 
-  tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step_original.dot");
+  tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step_original.dot");
   
-  std::vector<int64_t> remove_keys = {1, 5, 3, 4};
+  std::vector<int64_t> removed_keys;
+  for (int64_t key = 1; key < scale; key++) {
+    removed_keys.push_back(key);
+  }  
+  
+
+  auto rng = std::default_random_engine{};
+  std::shuffle(removed_keys.begin(), removed_keys.end(), rng);
+
   int step = 0;
-  for (auto key : remove_keys) {
+  for (auto key : removed_keys) {
     index_key.SetFromInteger(key);
+    std::cout << "removing "  << key << std::endl;
     tree.Remove(index_key, transaction);
-    tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
+    tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
                        ".dot");
   }
 
