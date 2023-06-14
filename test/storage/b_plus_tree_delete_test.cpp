@@ -25,7 +25,7 @@ namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
+TEST(BPlusTreeTests, DeleteTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -95,7 +95,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
+TEST(BPlusTreeTests, DeleteTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -200,7 +200,14 @@ TEST(BPlusTreeTests, DeleteTest3) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
-    tree.Insert(index_key, rid, transaction);
+    
+    bool yes = tree.Insert(index_key, rid, transaction);
+    std::cout << "Inserting " << key << " " << yes << std::endl;
+  }
+
+  for (auto iterator = tree.Begin(); iterator != tree.End(); ++iterator) {
+    auto location = (*iterator).second;
+    std::cout << location.GetSlotNum() << std::endl;
   }
 
   // std::vector<RID> rids;
@@ -213,8 +220,6 @@ TEST(BPlusTreeTests, DeleteTest3) {
   //   int64_t value = key & 0xFFFFFFFF;
   //   EXPECT_EQ(rids[0].GetSlotNum(), value);
   // }
-
-  tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step_original.dot");
   
   std::vector<int64_t> removed_keys;
   for (int64_t key = 1; key < scale; key++) {
@@ -231,6 +236,9 @@ TEST(BPlusTreeTests, DeleteTest3) {
     tree.Remove(index_key, transaction);
     step++;
     std::cout << "key size "  << step << std::endl;
+    if (step == 3393) {
+      step = 1;
+    }
     // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
     //                    ".dot");
   }

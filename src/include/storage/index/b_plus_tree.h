@@ -17,6 +17,7 @@
 #include <queue>
 #include <shared_mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "common/config.h"
@@ -91,7 +92,7 @@ class BPlusTree {
   // Return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 
-  auto FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert=false) -> page_id_t;
+  void FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert=false);
 
   void InsertParent(page_id_t left_page_id, page_id_t right_page_id, KeyType key, Context &ctx);
 
@@ -153,6 +154,7 @@ class BPlusTree {
   page_id_t header_page_id_;
 
   page_id_t root_page_id_;
+
 };
 
 /**

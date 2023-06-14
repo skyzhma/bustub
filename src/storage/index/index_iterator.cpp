@@ -31,7 +31,7 @@ auto INDEXITERATOR_TYPE::IsEnd() -> bool {
   }
   auto guard = bpm_->FetchPageRead(page_id_);
   auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
-  return static_cast<bool>(page->GetNextPageId() == INVALID_PAGE_ID && index_ == page->GetMaxSize());
+  return static_cast<bool>(page->GetNextPageId() == INVALID_PAGE_ID && index_ == page->GetSize());
 }
 
 INDEX_TEMPLATE_ARGUMENTS

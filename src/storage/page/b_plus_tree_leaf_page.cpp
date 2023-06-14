@@ -82,12 +82,18 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LookUp(const KeyType &key, KeyComparator comp, 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
   int index = FindIndex(key, comp);
+
+  // std::cout << "Inserting---" << index << " " << GetSize() << " " << GetMaxSize() << std::endl;
   if (index < GetSize() && comp(key, array_[index].first) == 0) {
     return false;
   }
-  for (int i = GetSize(); i >= index; i--) {
-    array_[i + 1] = array_[i];
+
+  if (index < GetSize()) {
+    for (int i = GetSize(); i >= index; i--) {
+      array_[i + 1] = array_[i];
+    }
   }
+
   array_[index].first = key;
   array_[index].second = v;
   IncreaseSize(1);

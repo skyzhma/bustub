@@ -47,7 +47,7 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
   // create transaction
   auto *transaction = new Transaction(0);
 
-  int64_t scale = 5000;
+  int64_t scale = 10;
   std::vector<int64_t> keys;
   for (int64_t key = 1; key < scale; key++) {
     keys.push_back(key);
@@ -65,6 +65,10 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
     // tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step" + std::to_string(step++) + "_insert" +
     // std::to_string(key) + ".dot"); std::cout << step << std::endl;
   }
+
+  tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_Scale.dot");
+
+
   std::vector<RID> rids;
   for (auto key : keys) {
     rids.clear();

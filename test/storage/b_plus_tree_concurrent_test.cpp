@@ -122,6 +122,7 @@ void LookupHelper(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> *tree, con
   delete transaction;
 }
 
+
 TEST(BPlusTreeConcurrentTest, InsertTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
@@ -134,9 +135,10 @@ TEST(BPlusTreeConcurrentTest, InsertTest1) {
   auto header_page = bpm->NewPage(&page_id);
   // create b+ tree
   BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator);
+  
   // keys to Insert
   std::vector<int64_t> keys;
-  int64_t scale_factor = 100;
+  int64_t scale_factor = 10000;
   for (int64_t key = 1; key < scale_factor; key++) {
     keys.push_back(key);
   }
@@ -149,9 +151,10 @@ TEST(BPlusTreeConcurrentTest, InsertTest1) {
     index_key.SetFromInteger(key);
     tree.GetValue(index_key, &rids);
     EXPECT_EQ(rids.size(), 1);
-
     int64_t value = key & 0xFFFFFFFF;
+    // std::cout << rids[0].GetSlotNum() << " " << value << std::endl;
     EXPECT_EQ(rids[0].GetSlotNum(), value);
+
   }
 
   int64_t start_key = 1;
@@ -161,6 +164,8 @@ TEST(BPlusTreeConcurrentTest, InsertTest1) {
     auto location = (*iterator).second;
     EXPECT_EQ(location.GetPageId(), 0);
     EXPECT_EQ(location.GetSlotNum(), current_key);
+    // std::cout << location.GetSlotNum() << " " << current_key << std::endl;
+
     current_key = current_key + 1;
   }
 
