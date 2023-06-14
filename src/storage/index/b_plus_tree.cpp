@@ -169,11 +169,9 @@ void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_i
     // header_page->root_page_id_ = root_page_id_;
 
     auto guard = bpm_->NewPageGuarded(&root_page_id_);
-
-
     auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
     page->Init(internal_max_size_);
-    // page->SetPageType(IndexPageType::INTERNAL_PAGE);
+    page->SetPageType(IndexPageType::INTERNAL_PAGE);
     page->SetKeyAt(1, key);
     page->SetValueAt(0, left_page_id);
     page->SetValueAt(1, right_page_id);
@@ -363,7 +361,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
       // ctx.write_set_.push_back(std::move(parent_guard));
 
       // The parent are beging locked, no need to push the guard back
-      RemoveParent(std::move(parent_guard), page->KeyAt(page->GetSize()-1), ctx);
+      KeyType delete_key = parent_page->KeyAt(index + 1);
+
+      RemoveParent(std::move(parent_guard), delete_key, ctx);
+
+      // RemoveParent(std::move(parent_guard), page->KeyAt(page->GetSize()-1), ctx);
     }
   } else {
     // borrow the key from the left sibling
@@ -540,6 +542,8 @@ void BPLUSTREE_TYPE::RemoveParent(WritePageGuard &&guard, const KeyType &key, Co
 
         // delete the page
         bpm_->DeletePage(guard.PageId());
+
+        // can drop or not
         guard.Drop();
         silbling_guard.Drop();
 

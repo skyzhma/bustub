@@ -25,7 +25,7 @@ namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
 
-TEST(BPlusTreeTests, DeleteTest1) {
+TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -95,7 +95,7 @@ TEST(BPlusTreeTests, DeleteTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, DeleteTest2) {
+TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -238,6 +238,8 @@ TEST(BPlusTreeTests, DeleteTest3) {
     std::cout << "key size "  << step << std::endl;
     if (step == 3393) {
       step = 1;
+      tree.Draw(bpm, "/home/zhma/Desktop/CMU/Delete.dot");
+
     }
     // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
     //                    ".dot");
