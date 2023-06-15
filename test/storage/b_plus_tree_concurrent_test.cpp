@@ -360,7 +360,7 @@ TEST(BPlusTreeConcurrentTest, MixTest2) {
   // Add perserved_keys
   std::vector<int64_t> perserved_keys;
   std::vector<int64_t> dynamic_keys;
-  int64_t total_keys = 10000;
+  int64_t total_keys = 20000;
   int64_t sieve = 5;
   for (int64_t i = 1; i <= total_keys; i++) {
     if (i % sieve == 0) {
@@ -397,9 +397,19 @@ TEST(BPlusTreeConcurrentTest, MixTest2) {
   for (auto iter = tree.Begin(); iter != tree.End(); ++iter) {
     const auto &pair = *iter;
     if ((pair.first).ToString() % sieve == 0) {
+      // std::cout << ((pair.first).ToString() == step) << std::endl;
+      // step += 5;
       size++;
     }
   }
+  GenericKey<8> index_key;
+  std::vector<RID> rids;
+  for (auto key : perserved_keys) {
+      rids.clear();
+      index_key.SetFromInteger(key);
+      ASSERT_EQ(tree.GetValue(index_key, &rids), true);
+  }
+
 
   ASSERT_EQ(size, perserved_keys.size());
 

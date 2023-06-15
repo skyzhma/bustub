@@ -49,10 +49,9 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
   if (IsEmpty()) {
-    std::cout << "GetValue return false 1" << std::endl;
     return false;
   }
-  header_guard.Drop();
+  // header_guard.Drop();
 
   FindLeafPage(key, ctx, false);
 
@@ -66,8 +65,8 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     result->push_back(v);
     return true;
   }
-  std::cout << "GetValue return false 2" << std::endl;
   return false;
+
 }
 
 /*****************************************************************************
