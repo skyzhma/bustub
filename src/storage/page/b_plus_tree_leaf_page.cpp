@@ -83,7 +83,6 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool {
   int index = FindIndex(key, comp);
 
-  // std::cout << "Inserting---" << index << " " << GetSize() << " " << GetMaxSize() << std::endl;
   if (index < GetSize() && comp(key, array_[index].first) == 0) {
     return false;
   }

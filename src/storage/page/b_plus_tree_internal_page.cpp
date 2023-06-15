@@ -90,10 +90,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, KeyComparator co
       array_[i] = array_[i-1];
     }
   }
-
-  // for (int i = GetSize(); i >= index; i--) {
-  //   array_[i + 1] = array_[i];
-  // }
+  
   array_[index].first = key;
   array_[index].second = v;
   IncreaseSize(1);
