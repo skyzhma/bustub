@@ -49,6 +49,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
   if (IsEmpty()) {
+    std::cout << "GetValue return false 1" << std::endl;
     return false;
   }
   header_guard.Drop();
@@ -65,6 +66,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     result->push_back(v);
     return true;
   }
+  std::cout << "GetValue return false 2" << std::endl;
   return false;
 }
 
@@ -171,7 +173,7 @@ void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_i
     auto guard = bpm_->NewPageGuarded(&root_page_id_);
     auto page = guard.AsMut<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
     page->Init(internal_max_size_);
-    page->SetPageType(IndexPageType::INTERNAL_PAGE);
+    // page->SetPageType(IndexPageType::INTERNAL_PAGE);
     page->SetKeyAt(1, key);
     page->SetValueAt(0, left_page_id);
     page->SetValueAt(1, right_page_id);
@@ -194,11 +196,6 @@ void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_i
     return;
   }
 
-  // std::cout << "Before copying, Internal Page, copying data" << std::endl;
-  // for (int i = 0; i < internal_max_size_; i++) {
-  //   std::cout << parent_page->ValueAt(i) << std::endl;
-  // }
-
   // copy data to a big array
   int j = parent_page->FindIndex(key, comparator_);
   std::pair<KeyType, page_id_t> array[internal_max_size_ + 1];
@@ -214,11 +211,6 @@ void BPLUSTREE_TYPE::InsertParent(page_id_t left_page_id, page_id_t right_page_i
     array[index].first = parent_page->KeyAt(i);
     array[index++].second = parent_page->ValueAt(i);
   }
-
-  // std::cout << "After copying, Internal Page, copying data" << std::endl;
-  // for (int i = 0; i <= internal_max_size_; i++) {
-  //   std::cout << array[i].second << std::endl;
-  // }
 
   // Split a new parent page
   page_id_t parent_right_page_id;

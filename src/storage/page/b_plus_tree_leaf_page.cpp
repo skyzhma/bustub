@@ -89,8 +89,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, 
   }
 
   if (index < GetSize()) {
-    for (int i = GetSize(); i >= index; i--) {
-      array_[i + 1] = array_[i];
+    for (int i = GetSize(); i > index; i--) {
+      array_[i] = array_[i-1];
     }
   }
 

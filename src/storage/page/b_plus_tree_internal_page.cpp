@@ -86,8 +86,8 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, KeyComparator co
   }
 
   if (index < GetSize()) {
-    for (int i = GetSize(); i >= index; i--) {
-      array_[i + 1] = array_[i];
+    for (int i = GetSize(); i > index; i--) {
+      array_[i] = array_[i-1];
     }
   }
 

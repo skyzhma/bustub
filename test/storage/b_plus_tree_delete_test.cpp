@@ -25,7 +25,7 @@ namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
+TEST(BPlusTreeTests, DeleteTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -95,7 +95,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
+TEST(BPlusTreeTests, DeleteTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -184,65 +184,31 @@ TEST(BPlusTreeTests, DeleteTest3) {
   // create transaction
   auto *transaction = new Transaction(0);
 
-  // std::vector<int64_t> keys = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,};
-
   int64_t scale = 4000;
   std::vector<int64_t> keys;
   for (int64_t key = 1; key < scale; key++) {
     keys.push_back(key);
   }
 
-  // randomized the insertion order
-  // auto rng = std::default_random_engine{};
-  // std::shuffle(keys.begin(), keys.end(), rng);
-
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
     
-    bool yes = tree.Insert(index_key, rid, transaction);
-    std::cout << "Inserting " << key << " " << yes << std::endl;
+    tree.Insert(index_key, rid, transaction);
   }
 
-  for (auto iterator = tree.Begin(); iterator != tree.End(); ++iterator) {
-    auto location = (*iterator).second;
-    std::cout << location.GetSlotNum() << std::endl;
-  }
-
-  // std::vector<RID> rids;
-  // for (auto key : keys) {
-  //   rids.clear();
-  //   index_key.SetFromInteger(key);
-  //   tree.GetValue(index_key, &rids);
-  //   EXPECT_EQ(rids.size(), 1);
-
-  //   int64_t value = key & 0xFFFFFFFF;
-  //   EXPECT_EQ(rids[0].GetSlotNum(), value);
-  // }
-  
   std::vector<int64_t> removed_keys;
   for (int64_t key = 1; key < scale; key++) {
     removed_keys.push_back(key);
   }  
   
-
   auto rng = std::default_random_engine{};
   std::shuffle(removed_keys.begin(), removed_keys.end(), rng);
 
-  int step = 0;
   for (auto key : removed_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
-    step++;
-    std::cout << "key size "  << step << std::endl;
-    if (step == 3393) {
-      step = 1;
-      tree.Draw(bpm, "/home/zhma/Desktop/CMU/Delete.dot");
-
-    }
-    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_insert" + std::to_string(key) +
-    //                    ".dot");
   }
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);
