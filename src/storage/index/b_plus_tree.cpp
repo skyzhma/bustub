@@ -47,25 +47,49 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   Context ctx;
   (void)ctx;
 
+
   // Lock the whole tree, not a good idea, need to be improved
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
   if (IsEmpty()) {
     return false;
   }
   // header_guard.Drop();
-  FindLeafPage(key, ctx, false);
 
-  WritePageGuard guard = std::move(ctx.write_set_.back());
-  ctx.write_set_.pop_back();
+  auto guard = bpm_->FetchPageRead(root_page_id_);
+  while (!guard.As<BPlusTreePage>()->IsLeafPage()) {
+    auto page = guard.As<BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>>();
 
-  // auto guard = bpm_->FetchPageBasic(leaf_page_id);
-  auto page = guard.AsMut<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+    page_id_t t;
+    page->LookUp(key, comparator_, t);
+
+    auto child_guard = bpm_->FetchPageRead(t);
+    // execute the deconstructor function of current guard (unpin the page)
+    guard = std::move(child_guard);
+  }
+
+  
+
+  auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
   ValueType v;
   if (page->LookUp(key, comparator_, v)) {
     result->push_back(v);
     return true;
   }
   return false;
+
+  // FindLeafPage(key, ctx, false);
+
+  // WritePageGuard guard = std::move(ctx.write_set_.back());
+  // ctx.write_set_.pop_back();
+
+  // // auto guard = bpm_->FetchPageBasic(leaf_page_id);
+  // auto page = guard.AsMut<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  // ValueType v;
+  // if (page->LookUp(key, comparator_, v)) {
+  //   result->push_back(v);
+  //   return true;
+  // }
+  // return false;
 
 }
 

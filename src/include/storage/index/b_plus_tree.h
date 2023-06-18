@@ -62,6 +62,21 @@ class Context {
       write_set_.pop_front();
     }
   }
+
+  void ReleaseHeader() {
+
+    if (header_page_) {
+      header_page_->Drop();
+      header_page_ = std::nullopt;
+    }
+
+  }
+
+  void Release() {
+    ReleaseAll();
+    ReleaseHeader();
+  }
+
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -152,9 +167,7 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
   page_id_t header_page_id_;
-
   page_id_t root_page_id_;
-
 };
 
 /**

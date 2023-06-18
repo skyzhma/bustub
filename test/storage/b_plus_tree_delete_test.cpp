@@ -206,9 +206,15 @@ TEST(BPlusTreeTests, DeleteTest3) {
   auto rng = std::default_random_engine{};
   std::shuffle(removed_keys.begin(), removed_keys.end(), rng);
 
+  // int step = 0;
   for (auto key : removed_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
+
+    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_delete" + std::to_string(key) +
+    //                    ".dot");
+    // std::cout << step << " " << key << std::endl;
+
   }
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);

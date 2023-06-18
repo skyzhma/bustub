@@ -104,9 +104,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto FindIndex(const KeyType &key, KeyComparator comp) -> int;
+  auto FindIndex(const KeyType &key, KeyComparator comp) const -> int;
 
-  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v);
+  void LookUp(const KeyType &key, KeyComparator comp, ValueType &v) const;
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 

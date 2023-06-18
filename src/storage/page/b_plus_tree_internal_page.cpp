@@ -52,7 +52,7 @@ namespace bustub {
 // auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator comp) -> int {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator comp) const -> int {
   int i = 1;
   int j = GetSize();
   while (i < j) {
@@ -68,7 +68,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndex(const KeyType &key, KeyComparator
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::LookUp(const KeyType &key, KeyComparator comp, ValueType &v) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::LookUp(const KeyType &key, KeyComparator comp, ValueType &v) const {
   int index = FindIndex(key, comp);
 
   if (index < GetSize() && comp(key, KeyAt(index)) == 0) {

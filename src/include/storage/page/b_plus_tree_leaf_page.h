@@ -89,9 +89,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
     return kstr;
   }
 
-  auto FindIndex(const KeyType &key, KeyComparator comp) -> int;
+  auto FindIndex(const KeyType &key, KeyComparator comp) const -> int;
 
-  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) -> bool;
+  auto LookUp(const KeyType &key, KeyComparator comp, ValueType &v) const -> bool;
 
   auto Insert(const KeyType &key, KeyComparator comp, const ValueType &v) -> bool;
 
