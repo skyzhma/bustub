@@ -89,7 +89,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, KeyComparator comp, 
 
   if (index < GetSize()) {
     for (int i = GetSize(); i > index; i--) {
-      array_[i] = array_[i-1];
+      array_[i] = array_[i - 1];
     }
   }
 
@@ -105,8 +105,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveKey(const KeyType &key, KeyComparator com
     if (comp(key, KeyAt(i)) == 0) {
       // find the key, remove it
       for (int j = i; j < GetSize(); j++) {
-        array_[j].first = array_[j+1].first;
-        array_[j].second = array_[j+1].second;
+        array_[j].first = array_[j + 1].first;
+        array_[j].second = array_[j + 1].second;
       }
       IncreaseSize(-1);
       return true;
@@ -118,12 +118,11 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveKey(const KeyType &key, KeyComparator com
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveKey(int index) {
   for (int i = index; i < GetSize(); i++) {
-    array_[i].first = array_[i+1].first;
-    array_[i].second = array_[i+1].second;
+    array_[i].first = array_[i + 1].first;
+    array_[i].second = array_[i + 1].second;
   }
   IncreaseSize(-1);
 }
-
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTreeLeafPage<GenericKey<8>, RID, GenericComparator<8>>;

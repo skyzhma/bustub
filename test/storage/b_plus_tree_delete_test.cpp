@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <random>
 
-
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
 #include "storage/disk/disk_manager_memory.h"
@@ -132,7 +131,7 @@ TEST(BPlusTreeTests, DeleteTest2) {
   }
 
   tree.Draw(bpm, "/home/zhma/Desktop/CMU/InsertTest_step_original.dot");
-  
+
   std::vector<int64_t> remove_keys = {1, 5, 3, 4};
   int step = 0;
   for (auto key : remove_keys) {
@@ -194,15 +193,15 @@ TEST(BPlusTreeTests, DeleteTest3) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
-    
+
     tree.Insert(index_key, rid, transaction);
   }
 
   std::vector<int64_t> removed_keys;
   for (int64_t key = 1; key < scale; key++) {
     removed_keys.push_back(key);
-  }  
-  
+  }
+
   auto rng = std::default_random_engine{};
   std::shuffle(removed_keys.begin(), removed_keys.end(), rng);
 
@@ -211,10 +210,10 @@ TEST(BPlusTreeTests, DeleteTest3) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
 
-    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_delete" + std::to_string(key) +
+    // tree.Draw(bpm, "/home/zhma/Desktop/CMU/DeleteTest_step" + std::to_string(step++) + "_delete" +
+    // std::to_string(key) +
     //                    ".dot");
     // std::cout << step << " " << key << std::endl;
-
   }
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);

@@ -190,5 +190,4 @@ TEST(BPlusTreeTests, InsertTest3) {
   delete bpm;
 }
 
-
 }  // namespace bustub

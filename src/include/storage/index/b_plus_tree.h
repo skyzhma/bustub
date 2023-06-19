@@ -64,19 +64,16 @@ class Context {
   }
 
   void ReleaseHeader() {
-
     if (header_page_) {
       header_page_->Drop();
       header_page_ = std::nullopt;
     }
-
   }
 
   void Release() {
     ReleaseAll();
     ReleaseHeader();
   }
-
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -107,7 +104,7 @@ class BPlusTree {
   // Return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 
-  void FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert=false);
+  void FindLeafPage(const KeyType &key, Context &ctx, bool record, bool insert = false);
 
   void InsertParent(page_id_t left_page_id, page_id_t right_page_id, KeyType key, Context &ctx);
 

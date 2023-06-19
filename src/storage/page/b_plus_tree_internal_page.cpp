@@ -87,10 +87,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, KeyComparator co
 
   if (index < GetSize()) {
     for (int i = GetSize(); i > index; i--) {
-      array_[i] = array_[i-1];
+      array_[i] = array_[i - 1];
     }
   }
-  
+
   array_[index].first = key;
   array_[index].second = v;
   IncreaseSize(1);
@@ -99,14 +99,12 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, KeyComparator co
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveKey(const KeyType &key, KeyComparator comp) {
-
-    int index = FindIndex(key, comp);
-    for (int i = index; i < GetSize() - 1; i++) {
-      array_[i].first = array_[i+1].first;
-      array_[i].second = array_[i+1].second;
-    }
-    IncreaseSize(-1);
-
+  int index = FindIndex(key, comp);
+  for (int i = index; i < GetSize() - 1; i++) {
+    array_[i].first = array_[i + 1].first;
+    array_[i].second = array_[i + 1].second;
+  }
+  IncreaseSize(-1);
 }
 
 // valuetype for internalNode should be page id_t

@@ -17,12 +17,10 @@ INDEXITERATOR_TYPE::IndexIterator() = default;
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *buffer_pool_manager, page_id_t page_id, int index)
-    : bpm_(buffer_pool_manager), page_id_(page_id), index_(index) {
-
-}
+    : bpm_(buffer_pool_manager), page_id_(page_id), index_(index) {}
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::~IndexIterator() { }  // NOLINT
+INDEXITERATOR_TYPE::~IndexIterator() {}  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
@@ -35,10 +33,10 @@ auto INDEXITERATOR_TYPE::IsEnd() -> bool {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { 
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
   auto guard = bpm_->FetchPageRead(page_id_);
   auto page = guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
-  return page->GetPair(index_); 
+  return page->GetPair(index_);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
