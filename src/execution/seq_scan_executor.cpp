@@ -29,8 +29,16 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     auto pair = iter_.GetTuple();
+
+    while (pair.first.is_deleted_) {
+        ++iter_;
+        if (iter_.IsEnd()) {return false;}
+        pair = iter_.GetTuple();
+    }
+
     *tuple = pair.second;
     *rid = iter_.GetRID();
+
     ++iter_;
     return true; 
 
