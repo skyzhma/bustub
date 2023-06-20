@@ -13,10 +13,40 @@
 
 namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx), plan_(plan) {
+  index_oid_t index_id = plan_->GetIndexOid();
 
-void IndexScanExecutor::Init() { throw NotImplementedException("IndexScanExecutor is not implemented"); }
+  IndexInfo *index_info = exec_ctx_->GetCatalog()->GetIndex(index_id);
 
-auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool { return false; }
+  table_info_ = exec_ctx_->GetCatalog()->GetTable(index_info->table_name_);
+
+  tree_ = dynamic_cast<BPlusTreeIndexForTwoIntegerColumn *>(index_info->index_.get());
+
+  iter_ = tree_->GetBeginIterator();
+}
+
+void IndexScanExecutor::Init() {}
+
+auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (iter_.IsEnd()) {
+    return false;
+  }
+
+  auto pair = table_info_->table_->GetTuple((*iter_).second);
+
+  while (pair.first.is_deleted_) {
+    ++iter_;
+    if (iter_.IsEnd()) {
+      return false;
+    }
+    pair = table_info_->table_->GetTuple((*iter_).second);
+  }
+
+  *tuple = pair.second;
+  *rid = (*iter_).second;
+
+  ++iter_;
+  return true;
+}
 
 }  // namespace bustub
