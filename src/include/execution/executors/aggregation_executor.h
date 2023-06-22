@@ -74,7 +74,7 @@ class SimpleAggregationHashTable {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       switch (agg_types_[i]) {
         case AggregationType::CountStarAggregate:
-          result->aggregates_[0].Add(Value(INTEGER, 1));
+          result->aggregates_[i] = result->aggregates_[i].Add(Value(INTEGER, 1));
           break;
         case AggregationType::CountAggregate:
 
@@ -83,31 +83,35 @@ class SimpleAggregationHashTable {
           }
 
           if (!input.aggregates_[i].IsNull()) {
-            result->aggregates_[i].Add(Value(INTEGER, 1));
+            result->aggregates_[i] = result->aggregates_[i].Add(Value(INTEGER, 1));
           }
-          
           break;
         case AggregationType::SumAggregate:
-          if (input.aggregates_[i].IsNull()) {
-            break;
+          if (result->aggregates_[i].IsNull()) {
+            result->aggregates_[i] = ValueFactory::GetIntegerValue(0);
           }
-          result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
+          }
           break;
         case AggregationType::MinAggregate:
-          if (input.aggregates_[i].IsNull()) {
-            break;
+          if (!input.aggregates_[i].IsNull() && result->aggregates_[i].IsNull()) {
+            result->aggregates_[i] = Value(INTEGER, 10000000);
           }
-          if (result->aggregates_[i].CompareGreaterThanEquals(input.aggregates_[i]) == CmpBool::CmpTrue) {
-            result->aggregates_[i] = input.aggregates_[i];
+
+          if (!input.aggregates_[i].IsNull() && result->aggregates_[i].CheckInteger()) {
+            result->aggregates_[i] = result->aggregates_[i].Min(input.aggregates_[i]);
           }
           break;
         case AggregationType::MaxAggregate:
-          if (input.aggregates_[i].IsNull()) {
-            break;
+          if (!input.aggregates_[i].IsNull() && result->aggregates_[i].IsNull()) {
+            result->aggregates_[i] = Value(INTEGER, -10000000);
           }
-          if (result->aggregates_[i].CompareGreaterThanEquals(input.aggregates_[i]) == CmpBool::CmpFalse) {
-            result->aggregates_[i] = input.aggregates_[i];
+
+          if (!input.aggregates_[i].IsNull() && result->aggregates_[i].CheckInteger()) {
+            result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
           }
+
           break;
       }
     }
@@ -164,6 +168,8 @@ class SimpleAggregationHashTable {
 
   /** @return Iterator to the end of the hash table */
   auto End() -> Iterator { return Iterator{ht_.cend()}; }
+
+  auto HtBegin() -> std::unordered_map<AggregateKey, AggregateValue>::const_iterator {return ht_.cbegin(); }
 
  private:
   /** The hash table is just a map from aggregate keys to aggregate values */
@@ -234,5 +240,8 @@ class AggregationExecutor : public AbstractExecutor {
   SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator */
   SimpleAggregationHashTable::Iterator aht_iterator_;
+
+  bool aggregate_finished_;
+  bool empty_;
 };
 }  // namespace bustub
