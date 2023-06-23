@@ -62,6 +62,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   bool left_finished_;
   bool right_finished_;
   size_t right_index_;
+  Tuple left_tuple_;
 
 };
 

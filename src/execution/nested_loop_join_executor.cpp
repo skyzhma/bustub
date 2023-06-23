@@ -37,6 +37,7 @@ void NestedLoopJoinExecutor::Init() {
   left_finished_ = false;
   right_finished_ = false;
   right_index_ = 0;
+  right_tuples_.clear();
 
   Tuple tuple{};
   RID rid{};
@@ -44,26 +45,54 @@ void NestedLoopJoinExecutor::Init() {
     right_tuples_.emplace_back(tuple);
   }
 
+  std::vector<Tuple> lefts;
+  while (left_executor_->Next(&tuple, &rid)) {
+    lefts.emplace_back(tuple);
+  }
+
+  for (size_t i = 0; i < lefts.size(); i++) {
+    for (size_t j = 0; j < right_tuples_.size();j++) {
+        if (plan_->Predicate()->EvaluateJoin(&lefts[i], 
+                                      left_executor_->GetOutputSchema(), 
+                                      &right_tuples_[j], 
+                                      right_executor_->GetOutputSchema()).GetAs<bool>()) {
+                                        std::cout << "match once " << i << " " << j << std::endl;
+                                      }
+    }
+  }
+
+
+
  }
 
 auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 
-  Tuple left_tuple{};
   RID left_rid{};
   bool flag = false;
-  while (left_executor_->Next(&left_tuple, &left_rid)) {
-    
-    // join with right table
-    auto right_tuple = right_tuples_[right_index_];
-    right_index_ = (right_index_ + 1) % right_tuples_.capacity();
 
-    std::vector<Value> values;
-    // match succeed
-    for (size_t t = 0; t < left_executor_->GetOutputSchema().GetColumns().size(); t++) {
-      values.emplace_back(left_tuple.GetValue(&left_executor_->GetOutputSchema(), t));
+  if (right_index_ == right_tuples_.size()) {
+    right_index_ = 0;
+  }
+
+  if (right_index_ == 0) {
+    if (!left_executor_->Next(&left_tuple_, &left_rid)) {
+      return false;
     }
+  }
 
-    if (plan_->Predicate()->EvaluateJoin(&left_tuple, 
+  std::vector<Value> values;
+  // match succeed
+  for (size_t t = 0; t < left_executor_->GetOutputSchema().GetColumns().size(); t++) {
+    values.emplace_back(left_tuple_.GetValue(&left_executor_->GetOutputSchema(), t));
+  }
+
+  while (right_index_ != right_tuples_.size()) {
+    
+    // right tuple
+    auto right_tuple = right_tuples_[right_index_];
+    right_index_++;
+
+    if (plan_->Predicate()->EvaluateJoin(&left_tuple_, 
                                         left_executor_->GetOutputSchema(), 
                                         &right_tuple, 
                                         right_executor_->GetOutputSchema()).GetAs<bool>()) {
@@ -72,18 +101,22 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       for (size_t t = 0; t < right_executor_->GetOutputSchema().GetColumns().size(); t++) {
         values.emplace_back(right_tuple.GetValue(&right_executor_->GetOutputSchema(), t));
       }
-    } else if(plan_->GetJoinType() == JoinType::LEFT) {
+
+      // schema
+      *tuple = Tuple(values, &GetOutputSchema());
+      flag = true;
+      break;
+
+    }
+
+
+  }
+
+  if(!flag && plan_->GetJoinType() == JoinType::LEFT) {
       // Left Join
       for (size_t t = 0; t < right_executor_->GetOutputSchema().GetColumns().size(); t++) {
         values.emplace_back(ValueFactory::GetNullValueByType(right_executor_->GetOutputSchema().GetColumn(t).GetType()));
-      }
-
-    } 
-
-    // schema
-    *tuple = Tuple(values, &GetOutputSchema());
-    flag = true;
-    break;
+    }
   }
 
   return flag;
