@@ -19,11 +19,13 @@ namespace bustub {
 InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
+      Init();
+}
+
+void InsertExecutor::Init() {
   child_executor_->Init();
   insert_finished_ = true;
 }
-
-void InsertExecutor::Init() {}
 
 auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   Catalog *catalog = exec_ctx_->GetCatalog();

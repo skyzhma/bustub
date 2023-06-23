@@ -19,11 +19,13 @@ namespace bustub {
 DeleteExecutor::DeleteExecutor(ExecutorContext *exec_ctx, const DeletePlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
+      Init();
+}
+
+void DeleteExecutor::Init() {
   child_executor_->Init();
   delete_finished_ = false;
 }
-
-void DeleteExecutor::Init() {}
 
 auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   Catalog *catalog = exec_ctx_->GetCatalog();
