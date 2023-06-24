@@ -18,6 +18,7 @@
 
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"
+#include "common/rid.h"
 #include "concurrency/lock_manager.h"
 #include "concurrency/transaction.h"
 #include "recovery/log_manager.h"

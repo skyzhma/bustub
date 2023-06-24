@@ -169,7 +169,7 @@ class SimpleAggregationHashTable {
   /** @return Iterator to the end of the hash table */
   auto End() -> Iterator { return Iterator{ht_.cend()}; }
 
-  auto HtBegin() -> std::unordered_map<AggregateKey, AggregateValue>::const_iterator {return ht_.cbegin(); }
+  auto HtBegin() -> std::unordered_map<AggregateKey, AggregateValue>::const_iterator { return ht_.cbegin(); }
 
  private:
   /** The hash table is just a map from aggregate keys to aggregate values */
