@@ -17,11 +17,12 @@ namespace bustub {
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
     : AbstractExecutor(exec_ctx),
       plan_(plan),
-      iter_(exec_ctx_->GetCatalog()->GetTable(plan->GetTableOid())->table_->MakeIterator()) {}
+      iter_(exec_ctx_->GetCatalog()->GetTable(plan->GetTableOid())->table_->MakeIterator()) {
+        Init();
+      }
 
 void SeqScanExecutor::Init() {
-  // TableHeap *table = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid())->table_.get();
-  // iter_ = TableIterator(table, table->GetStartRID(), table->GetStopRID());
+
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {

@@ -42,7 +42,6 @@ template <>
 struct hash<bustub::JointKey> {
   auto operator()(const bustub::JointKey &joint_key) const -> std::size_t {
     size_t curr_hash = 0;
-    
     if (!joint_key.value_.IsNull()) {
       curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&joint_key.value_));
     }
@@ -79,6 +78,9 @@ class HashJoinTable {
     return std::vector<Tuple>{};
   }
 
+  auto Clear() {
+    ht_.clear();
+  }
 
  private:
   std::unordered_map<JointKey, std::vector<Tuple>> ht_{};
@@ -117,9 +119,10 @@ class HashJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
-  HashJoinTable ht_;
-  std::unique_ptr<AbstractExecutor> &&left_child_;
-  std::unique_ptr<AbstractExecutor> &&right_child_;
+  HashJoinTable ht_[2];
+  std::unique_ptr<AbstractExecutor> left_child_;
+  std::unique_ptr<AbstractExecutor> right_child_;
+  
   std::vector<Tuple> tuples_;
 };
 

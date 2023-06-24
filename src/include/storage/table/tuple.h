@@ -68,6 +68,17 @@ class Tuple {
   // move constructor
   Tuple(Tuple &&other) noexcept = default;
 
+  auto operator==(const Tuple &other) const -> bool {
+
+    auto other_data = other.GetData();
+    for (size_t i = 0; i < data_.size(); i++) {
+      if (data_[i] != other_data[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // assign operator, deep copy
   auto operator=(const Tuple &other) -> Tuple & = default;
 

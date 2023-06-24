@@ -24,25 +24,26 @@ HashJoinExecutor::HashJoinExecutor(ExecutorContext *exec_ctx, const HashJoinPlan
     throw bustub::NotImplementedException(fmt::format("join type {} not supported", plan->GetJoinType()));
   }
 
+  left_child_->Init();
   right_child_->Init();
   Tuple tuple{};
   RID rid{};
-  
+  ht_[0].Clear();
+  ht_[1].Clear();
   auto right_expr = plan_->RightJoinKeyExpressions();
 
-  while (right_child_->Next(&tuple, &rid)) {
-
-    Value value = right_expr[0]->Evaluate(&tuple, plan_->GetRightPlan()->OutputSchema());
-    ht_.Insert(JointKey{value}, tuple);
+    while (right_child_->Next(&tuple, &rid)) {
+      for (size_t t = 0; t < right_expr.size(); t++) {
+      Value value = right_expr[t]->Evaluate(&tuple, plan_->GetRightPlan()->OutputSchema());
+      ht_[t].Insert(JointKey{value}, tuple);
+    }
   }
-
 
 }
 
 void HashJoinExecutor::Init() { 
 
   left_child_->Init();
-  right_child_->Init();
 
 }
 
@@ -63,8 +64,31 @@ auto HashJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       return false;
     }
 
-    Value value = plan_->RightJoinKeyExpressions()[0]->Evaluate(&left_tuple, plan_->GetRightPlan()->OutputSchema());
-    auto return_tuples = ht_.Get(JointKey{value});
+    Value value = plan_->LeftJoinKeyExpressions()[0]->Evaluate(&left_tuple, plan_->GetLeftPlan()->OutputSchema());
+    auto tuples1 = ht_[0].Get(JointKey{value});
+    
+    std::vector<Tuple> return_tuples;
+    
+    if (plan_->LeftJoinKeyExpressions().size() > 1) {
+      Value value = plan_->LeftJoinKeyExpressions()[1]->Evaluate(&left_tuple, plan_->GetLeftPlan()->OutputSchema());
+      auto tuples2 = ht_[1].Get(JointKey{value});
+      
+      if (!tuples2.empty()) {
+        for (const auto &tuple1 : tuples1) {
+          for (const auto &tuple2 : tuples2) {
+            if (tuple1 == tuple2) {
+              return_tuples.emplace_back(tuple1);
+            }
+          }
+        }
+      } else {
+        tuples1.clear();
+      }
+
+    } else {
+      return_tuples = tuples1;
+    }
+
     if (return_tuples.empty()) {
 
       if (plan_->GetJoinType() == JoinType::LEFT) {
