@@ -76,6 +76,7 @@ auto ProcessExtraOptions(const std::string &sql, bustub::BustubInstance &instanc
           return false;
         }
       } else if (opt == "ensure:hash_join") {
+        std::cout << result.str() << std::endl;
         if (bustub::StringUtil::Split(result.str(), "HashJoin").size() != 2 &&
             !bustub::StringUtil::Contains(result.str(), "Filter")) {
           fmt::print("HashJoin not found\n");

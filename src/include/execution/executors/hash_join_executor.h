@@ -13,14 +13,77 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
+#include "common/util/hash_util.h"
+#include "container/hash/hash_function.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
 
 namespace bustub {
+struct JointKey {
+  /** The group-by values */
+  Value value_;
+  auto operator==(const JointKey &other) const -> bool {
+    return value_.CompareEquals(other.value_) == CmpBool::CmpTrue;
+  }
+};
+}
+
+
+namespace std {
+
+/** Implements std::hash on AggregateKey */
+template <>
+struct hash<bustub::JointKey> {
+  auto operator()(const bustub::JointKey &joint_key) const -> std::size_t {
+    size_t curr_hash = 0;
+    
+    if (!joint_key.value_.IsNull()) {
+      curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&joint_key.value_));
+    }
+    
+    return curr_hash;
+  }
+};
+
+}  // namespace std
+
+
+namespace bustub {
+
+/**
+ * A simplified hash table that has all the necessary functionality for aggregations.
+ */
+class HashJoinTable {
+ public:
+
+  HashJoinTable() = default;
+
+  void Insert(const JointKey &key, const Tuple &val) {
+    if (ht_.count(key) == 0) {
+      ht_.insert({key, std::vector<Tuple>{val}});
+    } else {
+      ht_[key].emplace_back(val);
+    }
+  }
+
+  auto Get(const JointKey &key) -> std::vector<Tuple> {
+    if (ht_.count(key) > 0) {
+      return ht_[key];
+    }
+    return std::vector<Tuple>{};
+  }
+
+
+ private:
+  std::unordered_map<JointKey, std::vector<Tuple>> ht_{};
+};
+
 
 /**
  * HashJoinExecutor executes a nested-loop JOIN on two tables.
@@ -54,6 +117,11 @@ class HashJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  HashJoinTable ht_;
+  std::unique_ptr<AbstractExecutor> &&left_child_;
+  std::unique_ptr<AbstractExecutor> &&right_child_;
+  std::vector<Tuple> tuples_;
 };
 
 }  // namespace bustub
+
