@@ -32,8 +32,7 @@ struct JointKey {
     return value_.CompareEquals(other.value_) == CmpBool::CmpTrue;
   }
 };
-}
-
+}  // namespace bustub
 
 namespace std {
 
@@ -45,13 +44,12 @@ struct hash<bustub::JointKey> {
     if (!joint_key.value_.IsNull()) {
       curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&joint_key.value_));
     }
-    
+
     return curr_hash;
   }
 };
 
 }  // namespace std
-
 
 namespace bustub {
 
@@ -60,7 +58,6 @@ namespace bustub {
  */
 class HashJoinTable {
  public:
-
   HashJoinTable() = default;
 
   void Insert(const JointKey &key, const Tuple &val) {
@@ -78,14 +75,11 @@ class HashJoinTable {
     return std::vector<Tuple>{};
   }
 
-  auto Clear() {
-    ht_.clear();
-  }
+  auto Clear() { ht_.clear(); }
 
  private:
   std::unordered_map<JointKey, std::vector<Tuple>> ht_{};
 };
-
 
 /**
  * HashJoinExecutor executes a nested-loop JOIN on two tables.
@@ -122,9 +116,8 @@ class HashJoinExecutor : public AbstractExecutor {
   HashJoinTable ht_[2];
   std::unique_ptr<AbstractExecutor> left_child_;
   std::unique_ptr<AbstractExecutor> right_child_;
-  
+
   std::vector<Tuple> tuples_;
 };
 
 }  // namespace bustub
-

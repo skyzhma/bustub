@@ -25,7 +25,7 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
   iter_ = tree_->GetBeginIterator();
 }
 
-void IndexScanExecutor::Init() {}
+void IndexScanExecutor::Init() { iter_ = tree_->GetBeginIterator(); }
 
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (iter_.IsEnd()) {

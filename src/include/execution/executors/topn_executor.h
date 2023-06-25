@@ -12,12 +12,16 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <queue>
 #include <utility>
 #include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
+#include "execution/expressions/arithmetic_expression.h"
+#include "execution/expressions/column_value_expression.h"
 #include "execution/plans/seq_scan_plan.h"
 #include "execution/plans/topn_plan.h"
 #include "storage/table/tuple.h"
@@ -58,10 +62,37 @@ class TopNExecutor : public AbstractExecutor {
   /** @return The size of top_entries_ container, which will be called on each child_executor->Next(). */
   auto GetNumInHeap() -> size_t;
 
+  auto Comp(Tuple &tuple1, Tuple &tuple2) -> bool {
+    for (const auto &[order_by_type, expr] : plan_->GetOrderBy()) {
+      Value value1;
+      Value value2;
+      if (const auto expression = dynamic_cast<const ColumnValueExpression *>(expr.get()); expression != nullptr) {
+        value1 = tuple1.GetValue(&plan_->OutputSchema(), expression->GetColIdx());
+        value2 = tuple2.GetValue(&plan_->OutputSchema(), expression->GetColIdx());
+      } else {
+        const auto cal_expr = dynamic_cast<const ArithmeticExpression *>(expr.get());
+        value1 = cal_expr->Evaluate(&tuple1, plan_->OutputSchema());
+        value2 = cal_expr->Evaluate(&tuple2, plan_->OutputSchema());
+      }
+      auto flag = (order_by_type == OrderByType::DESC);
+      if (value1.CompareEquals(value2) == CmpBool::CmpTrue) {
+        continue;
+      }
+      if (value1.CompareGreaterThan(value2) == CmpBool::CmpTrue) {
+        return flag;
+      }
+      return !flag;
+    }
+    return true;
+  }
+
  private:
   /** The topn plan node to be executed */
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  std::vector<std::pair<OrderByType, AbstractExpressionRef>> order_by_;
+  std::vector<Tuple> tuples_;
+  size_t num_;
 };
 }  // namespace bustub

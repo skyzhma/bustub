@@ -45,8 +45,6 @@ class IndexScanExecutor : public AbstractExecutor {
   /** The index scan plan node to be executed. */
   const IndexScanPlanNode *plan_;
 
-  bool scan_finished_ = false;
-
   BPlusTreeIndexForTwoIntegerColumn *tree_;
 
   BPlusTreeIndexIteratorForTwoIntegerColumn iter_;
