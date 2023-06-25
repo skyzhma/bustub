@@ -4,13 +4,16 @@ namespace bustub {
 
 TopNExecutor::TopNExecutor(ExecutorContext *exec_ctx, const TopNPlanNode *plan,
                            std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
-  order_by_ = plan_->GetOrderBy();
+    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
-  child_executor_->Init();
+void TopNExecutor::Init() {
+  order_by_ = plan_->GetOrderBy();
+  num_ = 0;
+  tuples_.clear();
 
   Tuple tuple{};
   RID rid{};
+  child_executor_->Init();
 
   while (child_executor_->Next(&tuple, &rid)) {
     // binary search
@@ -26,23 +29,11 @@ TopNExecutor::TopNExecutor(ExecutorContext *exec_ctx, const TopNPlanNode *plan,
     }
 
     tuples_.insert(tuples_.begin() + i, tuple);
-    // if (i == tuples_.size()) {
-    //     tuples_.emplace_back(tuple);
-    // } else {
-    //     tuples_.insert(tuples_.begin() + i, tuple);
-    //     // for (size_t k = tuples_.size() - 1; k > i; k--) {
-    //     //     tuples_[k] = tuples_[k-1];
-    //     // }
-    //     // tuples_[i] = tuple;
-    // }
-
     if (tuples_.size() > plan_->GetN()) {
       tuples_.pop_back();
     }
   }
 }
-
-void TopNExecutor::Init() { num_ = 0; }
 
 auto TopNExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (num_ == tuples_.size()) {

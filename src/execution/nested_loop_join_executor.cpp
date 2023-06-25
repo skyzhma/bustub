@@ -37,8 +37,6 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
   while (right_executor_->Next(&tuple, &rid)) {
     right_tuples_.emplace_back(tuple);
   }
-
-  Init();
 }
 
 void NestedLoopJoinExecutor::Init() {

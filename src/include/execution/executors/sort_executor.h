@@ -13,8 +13,8 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "binder/bound_order_by.h"
 #include "execution/executor_context.h"
