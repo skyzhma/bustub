@@ -310,13 +310,15 @@ class LockManager {
   auto RunCycleDetection() -> void;
 
 
-  auto GrantLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request) -> bool;
+  auto GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request, const table_oid_t &oid) -> bool;
 
   auto CheckCompatibility(LockMode lockA, LockMode lockB) -> bool;
 
   auto CheckUpdate(LockMode lockA, LockMode lockB) -> bool;
 
-  void AcquireLock(Transaction *txn, table_oid_t &oid);
+  auto AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
+
+  auto AcquireRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> void;
 
   TransactionManager *txn_manager_;
 

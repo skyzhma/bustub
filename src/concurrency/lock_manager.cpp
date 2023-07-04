@@ -138,7 +138,7 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   lock_request_queue->request_queue_.emplace_back(lock_request);
 
   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
-  while (!GrantLock(lock_request)) {
+  while (!GrantTableLock(lock_request_queue, lock_request, oid)) {
     lock_request_queue->cv_.wait(lock);
   }
 
@@ -181,7 +181,7 @@ void LockManager::RunCycleDetection() {
   }
 }
 
-auto LockManager::GrantLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request) -> bool {
+auto LockManager::GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request, const table_oid_t &oid) -> bool {
 
   bool wait_compatibility = true;
 
@@ -213,10 +213,7 @@ auto LockManager::GrantLock(std::shared_ptr<LockRequestQueue>& queue, std::share
     return false;
   }
 
-  if (update_current_txn) {
-    request->granted_ = true;
-    queue->upgrading_ = INVALID_TXN_ID;
-  }
+
 
   for (auto &queue_request : queue->request_queue_) {
 
@@ -226,9 +223,17 @@ auto LockManager::GrantLock(std::shared_ptr<LockRequestQueue>& queue, std::share
 
     if (!queue_request->granted_ && CheckCompatibility(queue_request->lock_mode_, request->lock_mode_)) {
       queue_request->granted_ = true;
+      AcquireTableLock(txn_manager_->GetTransaction(queue_request->txn_id_), oid, queue_request->lock_mode_);
     }
 
   }
+
+  if (update_current_txn) {
+    queue->upgrading_ = INVALID_TXN_ID;
+  }
+  
+  request->granted_ = true;
+  AcquireTableLock(txn_manager_->GetTransaction(request->txn_id_), oid, request->lock_mode_);
 
   return true;
 }
@@ -281,7 +286,7 @@ auto LockManager::CheckUpdate(LockMode lockA, LockMode lockB) -> bool {
 
 }
 
-void LockManager::AcquireTableLock(Transaction *txn, table_oid_t &oid, LockMode lock_mode) {
+void LockManager::AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) {
   
   if (lock_mode == LockMode::SHARED) {
     txn->GetSharedTableLockSet()->insert(oid);
@@ -295,6 +300,17 @@ void LockManager::AcquireTableLock(Transaction *txn, table_oid_t &oid, LockMode 
     txn->GetSharedIntentionExclusiveTableLockSet()->insert(oid);
   }
 
+}
+
+void LockManager::AcquireRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) {
+
+  if (lock_mode == LockMode::SHARED) {
+    auto row_lock_set = txn->GetSharedRowLockSet()->at(oid);
+    row_lock_set.insert(rid);
+  } else {
+    auto row_lock_set = txn->GetExclusiveRowLockSet()->at(oid);
+    row_lock_set.insert(rid);
+  }
 }
 
 }  // namespace bustub
