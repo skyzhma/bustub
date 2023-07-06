@@ -312,9 +312,8 @@ class LockManager {
 
   auto GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request, const table_oid_t &oid) -> bool;
 
-  auto CheckCompatibility(LockMode lockA, LockMode lockB) -> bool;
+  auto ReleaseTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 
-  auto CheckUpdate(LockMode lockA, LockMode lockB) -> bool;
 
   auto AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 

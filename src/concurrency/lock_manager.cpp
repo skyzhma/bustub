@@ -84,13 +84,13 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
       }
 
       // check upgrade conflict
-      if (!CheckUpdate(lock_request->lock_mode_, lock_mode)) {
+      if (!CanLockUpgrade(lock_request->lock_mode_, lock_mode)) {
         throw TransactionAbortException(tid, AbortReason::UPGRADE_CONFLICT);
       }
 
       // Rightnow, we can upgrade the lock
-
       // Relase current held locks
+
       // switch (lock_request->lock_mode_) {
       //   case LockMode::SHARED: {
       //     txn->GetSharedTableLockSet()->erase(oid);
@@ -115,7 +115,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
       // }
 
       // Release current lock
-      // Unlock table ?
       UnlockTable(txn, oid);
 
       // remove the request
@@ -123,7 +122,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
       break;
     }
   }
-
 
   // add a new lock request
   auto lock_request = std::make_shared<LockRequest>(tid, lock_mode, oid);
@@ -133,6 +131,7 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
     lock_request->lock_mode_ = lock_mode;
     lock_request_queue->upgrading_ = tid;
     lock_request->granted_ = false;
+
   }
 
   lock_request_queue->request_queue_.emplace_back(lock_request);
@@ -148,7 +147,75 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
     
 }
 
-auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool { return true; }
+auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool { 
+
+
+  // check if the transaction hold row locks
+  auto shared_row_lock_set = txn->GetSharedRowLockSet();
+  if (shared_row_lock_set->find(oid) != shared_row_lock_set->end()) {
+    return false;
+  }
+
+  auto exclusive_row_lock_set = txn->GetExclusiveRowLockSet();
+  if (exclusive_row_lock_set->find(oid) != exclusive_row_lock_set->end()) {
+    return false;
+  }
+
+
+  // lock the table map
+  // std::lock_guard<std::mutex> locker(table_lock_map_latch_);
+  table_lock_map_latch_.lock();
+  if (table_lock_map_.find(oid) == table_lock_map_.end()) {
+    table_lock_map_latch_.unlock();
+    throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
+  }
+
+  std::shared_ptr<LockRequestQueue> lock_request_queue;
+  lock_request_queue = table_lock_map_[oid];
+
+  std::lock_guard<std::mutex> locker(lock_request_queue->latch_);
+  table_lock_map_latch_.unlock();
+
+  // find the txn
+  auto flag = false;
+
+  for (auto &request : lock_request_queue->request_queue_) {
+
+    if (request->txn_id_!= txn->GetTransactionId()) {
+      continue;
+    }
+
+    flag = true;
+
+    if (txn->GetIsolationLevel() == IsolationLevel::REPEATABLE_READ && 
+      (request->lock_mode_ == LockMode::SHARED || request->lock_mode_ == LockMode::EXCLUSIVE)) {
+        txn->SetState(TransactionState::SHRINKING);
+      }
+
+    if (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED
+      || txn->GetIsolationLevel() == IsolationLevel::READ_UNCOMMITTED) {
+      if (request->lock_mode_ == LockMode::EXCLUSIVE) {
+        txn->SetState(TransactionState::SHRINKING);
+      }
+    }
+
+    // remove request
+    lock_request_queue->request_queue_.remove(request);
+
+
+    // Book Keeping,  delete corresponding lock
+    ReleaseTableLock(txn, oid, request->lock_mode_);
+    break;
+  }
+
+  if (!flag) {
+    throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
+  }
+
+
+  return true; 
+  
+}
 
 auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
   return true;
@@ -181,6 +248,49 @@ void LockManager::RunCycleDetection() {
   }
 }
 
+auto LockManager::AreLocksCompatible(LockMode l1, LockMode l2) -> bool {
+        // check conflict
+      if (l1 == LockMode::INTENTION_SHARED && l2 != LockMode::EXCLUSIVE) {
+        return true;
+      }
+
+      if (l1 == LockMode::INTENTION_EXCLUSIVE && 
+        (l2 == LockMode::INTENTION_SHARED || l2 == LockMode::INTENTION_EXCLUSIVE)) {
+          return true;
+        }
+
+      if (l1 == LockMode::SHARED && l2 == LockMode::SHARED) {
+        return true;
+      }
+
+      if (l1 == LockMode::SHARED_INTENTION_EXCLUSIVE && l2 == LockMode::INTENTION_SHARED) {
+        return true;
+      }
+
+      return false;
+}
+
+auto LockManager::CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool {
+      if (curr_lock_mode == LockMode::INTENTION_SHARED && (
+        requested_lock_mode == LockMode::SHARED || requested_lock_mode == LockMode::EXCLUSIVE || 
+        requested_lock_mode == LockMode::INTENTION_EXCLUSIVE || requested_lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE
+      )) {
+        return true;
+      }
+
+      if ((curr_lock_mode == LockMode::SHARED || curr_lock_mode == LockMode::INTENTION_EXCLUSIVE) && (
+        requested_lock_mode == LockMode::EXCLUSIVE || requested_lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE
+      )) {
+        return true;
+      }
+
+      if (curr_lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE && requested_lock_mode == LockMode::EXCLUSIVE) {
+        return true;
+      }
+
+      return false;
+}
+
 auto LockManager::GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::shared_ptr<LockRequest>& request, const table_oid_t &oid) -> bool {
 
   bool wait_compatibility = true;
@@ -191,7 +301,7 @@ auto LockManager::GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::
       continue;
     }
 
-    bool flag = CheckCompatibility(queue_request->lock_mode_, request->lock_mode_);
+    bool flag = AreLocksCompatible(queue_request->lock_mode_, request->lock_mode_);
     if (queue_request->granted_) {
       if (flag) {
         continue;
@@ -221,7 +331,7 @@ auto LockManager::GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::
       continue;
     }
 
-    if (!queue_request->granted_ && CheckCompatibility(queue_request->lock_mode_, request->lock_mode_)) {
+    if (!queue_request->granted_ && AreLocksCompatible(queue_request->lock_mode_, request->lock_mode_)) {
       queue_request->granted_ = true;
       AcquireTableLock(txn_manager_->GetTransaction(queue_request->txn_id_), oid, queue_request->lock_mode_);
     }
@@ -238,51 +348,19 @@ auto LockManager::GrantTableLock(std::shared_ptr<LockRequestQueue>& queue, std::
   return true;
 }
 
-auto LockManager::CheckCompatibility(LockMode lockA, LockMode lockB) -> bool {
-
-      // check conflict
-      if (lockA == LockMode::INTENTION_SHARED && lockB != LockMode::EXCLUSIVE) {
-        return true;
-      }
-
-      if (lockA == LockMode::INTENTION_EXCLUSIVE && 
-        (lockB == LockMode::INTENTION_SHARED || lockB == LockMode::INTENTION_EXCLUSIVE)) {
-          return true;
-        }
-
-      if (lockA == LockMode::SHARED && lockB == LockMode::SHARED) {
-        return true;
-      }
-
-      if (lockA == LockMode::SHARED_INTENTION_EXCLUSIVE && lockB == LockMode::INTENTION_SHARED) {
-        return true;
-      }
-
-      return false;
-
-}
-
-auto LockManager::CheckUpdate(LockMode lockA, LockMode lockB) -> bool {
-
-      // check conflict
-      if (lockA == LockMode::INTENTION_SHARED && (
-        lockB == LockMode::SHARED || lockB == LockMode::EXCLUSIVE || 
-        lockB == LockMode::INTENTION_EXCLUSIVE || lockB == LockMode::SHARED_INTENTION_EXCLUSIVE
-      )) {
-        return true;
-      }
-
-      if ((lockA == LockMode::SHARED || lockA == LockMode::INTENTION_EXCLUSIVE) && (
-        lockB == LockMode::EXCLUSIVE || lockB == LockMode::SHARED_INTENTION_EXCLUSIVE
-      )) {
-        return true;
-      }
-
-      if (lockA == LockMode::SHARED_INTENTION_EXCLUSIVE && lockB == LockMode::EXCLUSIVE) {
-        return true;
-      }
-
-      return false;
+void LockManager::ReleaseTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) {
+  
+  if (lock_mode == LockMode::SHARED) {
+    txn->GetSharedTableLockSet()->erase(oid);
+  } else if (lock_mode == LockMode::EXCLUSIVE) {
+    txn->GetExclusiveTableLockSet()->erase(oid);
+  } else if (lock_mode == LockMode::INTENTION_SHARED) {
+    txn->GetIntentionSharedTableLockSet()->erase(oid);
+  } else if (lock_mode == LockMode::INTENTION_EXCLUSIVE) {
+    txn->GetIntentionExclusiveTableLockSet()->erase(oid);
+  } else {
+    txn->GetSharedIntentionExclusiveTableLockSet()->erase(oid);
+  }
 
 }
 
