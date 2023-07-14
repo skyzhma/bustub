@@ -198,7 +198,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
       }
     }
 
-    // remove request 
+    // remove request
     lock_request_queue->request_queue_.remove(request);
 
     // Book Keeping,  delete corresponding lock
@@ -217,7 +217,6 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
 }
 
 auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
-  
   txn_id_t tid = txn->GetTransactionId();
   TransactionState ts = txn->GetState();
   IsolationLevel til = txn->GetIsolationLevel();
@@ -225,21 +224,27 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   // Not support Intension locks
   if (lock_mode == LockMode::INTENTION_EXCLUSIVE || lock_mode == LockMode::INTENTION_SHARED ||
       lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE) {
-      txn->SetState(TransactionState::ABORTED);
-      throw TransactionAbortException(tid, AbortReason::ATTEMPTED_INTENTION_LOCK_ON_ROW);
+    txn->SetState(TransactionState::ABORTED);
+    throw TransactionAbortException(tid, AbortReason::ATTEMPTED_INTENTION_LOCK_ON_ROW);
   }
 
   // ensure it hold a table lock
   if (lock_mode == LockMode::EXCLUSIVE) {
     int num = 0;
     auto table_lock_set1 = txn->GetExclusiveTableLockSet();
-    if (table_lock_set1->find(oid) == table_lock_set1->end()) { num++; }
-    
+    if (table_lock_set1->find(oid) == table_lock_set1->end()) {
+      num++;
+    }
+
     auto table_lock_set2 = txn->GetIntentionExclusiveTableLockSet();
-    if (table_lock_set2->find(oid) == table_lock_set2->end()) { num++; }
-  
+    if (table_lock_set2->find(oid) == table_lock_set2->end()) {
+      num++;
+    }
+
     auto table_lock_set3 = txn->GetSharedIntentionExclusiveTableLockSet();
-    if (table_lock_set3->find(oid) == table_lock_set3->end()) { num++; }
+    if (table_lock_set3->find(oid) == table_lock_set3->end()) {
+      num++;
+    }
 
     if (num == 3) {
       txn->SetState(TransactionState::ABORTED);
@@ -250,13 +255,19 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   if (lock_mode == LockMode::SHARED) {
     int num = 0;
     auto table_lock_set1 = txn->GetSharedTableLockSet();
-    if (table_lock_set1->find(oid) == table_lock_set1->end()) { num++; }
-    
+    if (table_lock_set1->find(oid) == table_lock_set1->end()) {
+      num++;
+    }
+
     auto table_lock_set2 = txn->GetIntentionSharedTableLockSet();
-    if (table_lock_set2->find(oid) == table_lock_set2->end()) { num++; }
-  
+    if (table_lock_set2->find(oid) == table_lock_set2->end()) {
+      num++;
+    }
+
     auto table_lock_set3 = txn->GetSharedIntentionExclusiveTableLockSet();
-    if (table_lock_set3->find(oid) == table_lock_set3->end()) { num++; }
+    if (table_lock_set3->find(oid) == table_lock_set3->end()) {
+      num++;
+    }
 
     if (num == 3) {
       txn->SetState(TransactionState::ABORTED);
@@ -357,7 +368,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     }
   }
 
-    // add a new lock request
+  // add a new lock request
   auto lock_request = std::make_shared<LockRequest>(tid, lock_mode, oid, rid);
 
   if (flag) {
@@ -366,7 +377,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     lock_request_queue->upgrading_ = tid;
     lock_request->granted_ = false;
   }
-  
+
   lock_request_queue->request_queue_.emplace_back(lock_request);
 
   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
@@ -374,12 +385,11 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   while (!GrantTableLock(lock_request_queue, lock_request, oid)) {
     lock_request_queue->cv_.wait(lock);
   }
-  
+
   return true;
 }
 
 auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID &rid, bool force) -> bool {
-  
   // lock the table map
   // std::lock_guard<std::mutex> locker(table_lock_map_latch_);
 
@@ -407,7 +417,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
       continue;
     }
 
-    if (request->rid_ == rid ) {
+    if (request->rid_ == rid) {
       continue;
     }
 
@@ -425,7 +435,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
       }
     }
 
-    // remove request 
+    // remove request
     lock_request_queue->request_queue_.remove(request);
 
     // Book Keeping,  delete corresponding lock
@@ -577,7 +587,6 @@ void LockManager::ReleaseTableLock(Transaction *txn, const table_oid_t &oid, Loc
 }
 
 void LockManager::ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const RID &rid) {
-  
   auto shared_lock_set = txn->GetSharedRowLockSet();
   if (shared_lock_set->find(oid) != shared_lock_set->end()) {
     if (shared_lock_set->at(oid).find(rid) != shared_lock_set->at(oid).end()) {
@@ -591,10 +600,7 @@ void LockManager::ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const
       exclusive_lock_set->at(oid).erase(rid);
     }
   }
-
-
 }
-
 
 void LockManager::AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) {
   if (lock_mode == LockMode::SHARED) {
