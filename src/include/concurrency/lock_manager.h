@@ -314,6 +314,8 @@ class LockManager {
 
   auto ReleaseTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 
+  auto ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const RID &rid) -> void;
+
   auto AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 
   auto AcquireRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> void;
