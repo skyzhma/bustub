@@ -208,54 +208,42 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   }
 
   // ensure it hold a table lock
-  if (lock_mode == LockMode::EXCLUSIVE) {
-    int num = 0;
-    auto table_lock_set1 = txn->GetExclusiveTableLockSet();
-    if (table_lock_set1->find(oid) == table_lock_set1->end()) {
-      num++;
-    }
 
-    auto table_lock_set2 = txn->GetIntentionExclusiveTableLockSet();
-    if (table_lock_set2->find(oid) == table_lock_set2->end()) {
-      num++;
-    }
+  int num = 0;
 
-    auto table_lock_set3 = txn->GetSharedIntentionExclusiveTableLockSet();
-    if (table_lock_set3->find(oid) == table_lock_set3->end()) {
-      num++;
-    }
-
-    if (num == 3) {
-      txn->SetState(TransactionState::ABORTED);
-      throw TransactionAbortException(tid, AbortReason::TABLE_LOCK_NOT_PRESENT);
-    }
+  auto table_lock_set1 = txn->GetExclusiveTableLockSet();
+  if (table_lock_set1->find(oid) == table_lock_set1->end()) {
+    num++;
   }
 
-  if (lock_mode == LockMode::SHARED) {
-    int num = 0;
-    auto table_lock_set1 = txn->GetSharedTableLockSet();
-    if (table_lock_set1->find(oid) == table_lock_set1->end()) {
-      num++;
-    }
-
-    auto table_lock_set2 = txn->GetIntentionSharedTableLockSet();
-    if (table_lock_set2->find(oid) == table_lock_set2->end()) {
-      num++;
-    }
-
-    auto table_lock_set3 = txn->GetSharedIntentionExclusiveTableLockSet();
-    if (table_lock_set3->find(oid) == table_lock_set3->end()) {
-      num++;
-    }
-
-    if (num == 3) {
-      txn->SetState(TransactionState::ABORTED);
-      throw TransactionAbortException(tid, AbortReason::TABLE_LOCK_NOT_PRESENT);
-    }
+  auto table_lock_set2 = txn->GetIntentionExclusiveTableLockSet();
+  if (table_lock_set2->find(oid) == table_lock_set2->end()) {
+    num++;
   }
+
+  auto table_lock_set3 = txn->GetSharedTableLockSet();
+  if (table_lock_set3->find(oid) == table_lock_set3->end()) {
+    num++;
+  }
+
+  auto table_lock_set4 = txn->GetIntentionSharedTableLockSet();
+  if (table_lock_set4->find(oid) == table_lock_set4->end()) {
+    num++;
+  }
+
+  auto table_lock_set5 = txn->GetSharedIntentionExclusiveTableLockSet();
+  if (table_lock_set5->find(oid) == table_lock_set5->end()) {
+    num++;
+  }
+
+  if (num == 5) {
+    txn->SetState(TransactionState::ABORTED);
+    throw TransactionAbortException(tid, AbortReason::TABLE_LOCK_NOT_PRESENT);
+  }
+  
 
   // Check Isolation level
-  if (txn->GetState() == TransactionState::SHRINKING) {
+  if (ts == TransactionState::SHRINKING) {
     if (lock_mode == LockMode::EXCLUSIVE || lock_mode == LockMode::INTENTION_EXCLUSIVE) {
       txn->SetState(TransactionState::ABORTED);
       throw TransactionAbortException(tid, AbortReason::LOCK_ON_SHRINKING);
@@ -364,6 +352,10 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   // Change it to GrantRowLock
   while (!GrantRowLock(txn, lock_request_queue, lock_request, oid, rid)) {
     lock_request_queue->cv_.wait(lock);
+    if (txn->GetState() == TransactionState::ABORTED) {
+      lock_request_queue->request_queue_.remove(lock_request);
+      return true;
+    }
   }
 
   return true;
@@ -556,44 +548,27 @@ auto LockManager::GrantTableLock(Transaction *txn, std::shared_ptr<LockRequestQu
 auto LockManager::GrantRowLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue, std::shared_ptr<LockRequest> &request,
                       const table_oid_t &oid, const RID &rid) -> bool {
   
-  bool flag = false;
-
-  if (queue->request_queue_.front() == request) {
-    if (request->lock_mode_ == LockMode::SHARED) {
-
-      for (auto &queue_request : queue->request_queue_) {
-        if (queue_request->lock_mode_ == LockMode::SHARED) {
-          queue_request->granted_ = true;
-          AcquireRowLock(txn, LockMode::SHARED,oid, rid);
-        } else {
-          break;
-        }
-      }
-    } else {
-      request->granted_ = true;
-      AcquireRowLock(txn, LockMode::SHARED,oid, rid);
-      
-    }
-    return true;
-  }
-
-  if (queue->request_queue_.front()->lock_mode_ == LockMode::EXCLUSIVE) {
-    return false;
-  }
-
   for (auto &queue_request : queue->request_queue_) {
-      if (queue_request->lock_mode_ == LockMode::SHARED) {
-        queue_request->granted_ = true;
-        AcquireRowLock(txn, LockMode::SHARED,oid, rid);
-        if (queue_request == request) {
-          flag = true;
-        }
-      } else {
-        return flag;
+    if (queue_request == request) {
+      continue;
+    }
+
+    if (queue_request->granted_) {
+
+      if (queue_request->lock_mode_ == LockMode::EXCLUSIVE) {
+        return false;
       }
+
+      if (request->lock_mode_ == LockMode::EXCLUSIVE) {
+        return false;
+      }
+
+    }
   }
 
-  return flag;
+  request->granted_ = true;
+  AcquireRowLock(txn, request->lock_mode_, oid, rid);
+  return true;
 
 }
 
