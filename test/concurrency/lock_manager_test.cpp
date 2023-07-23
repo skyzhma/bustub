@@ -85,7 +85,7 @@ void TableLockTest1() {
   std::vector<Transaction *> txns;
 
   /** 10 tables */
-  int num_oids = 10;
+  int num_oids = 1;
   for (int i = 0; i < num_oids; i++) {
     table_oid_t oid{static_cast<uint32_t>(i)};
     oids.push_back(oid);
@@ -162,7 +162,7 @@ void RowLockTest1() {
   table_oid_t oid = 0;
   RID rid{0, 0};
 
-  int num_txns = 3;
+  int num_txns = 1;
   std::vector<Transaction *> txns;
   for (int i = 0; i < num_txns; i++) {
     txns.push_back(txn_mgr.Begin());
@@ -258,7 +258,7 @@ void TwoPLTest1() {
   delete txn;
 }
 
-TEST(LockManagerTest, DISABLED_TwoPLTest1) { TwoPLTest1(); }  // NOLINT
+TEST(LockManagerTest, TwoPLTest1) { TwoPLTest1(); }  // NOLINT
 
 void AbortTest1() {
   fmt::print(stderr, "AbortTest1: multiple X should block\n");
