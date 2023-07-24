@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <condition_variable>  // NOLINT
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -322,6 +323,17 @@ class LockManager {
   auto AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 
   auto AcquireRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> void;
+
+  auto BinarySearch(std::vector<txn_id_t> &neighbors, txn_id_t tid) -> size_t;
+
+  auto DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &visit, bool &flag) -> void;
+
+  auto BuildGraph(std::list<std::shared_ptr<LockRequest>> queue) -> void;
+
+  auto RemoveTableRequest(std::shared_ptr<LockRequestQueue>& queue, txn_id_t txn_id_) -> void;
+
+  auto RemoveRowRequest(std::shared_ptr<LockRequestQueue>& queue, txn_id_t txn_id_, table_oid_t oid, RID rid) -> void;
+
 
   TransactionManager *txn_manager_;
 
