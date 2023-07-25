@@ -12,7 +12,7 @@
 #include "gtest/gtest.h"
 
 namespace bustub {
-TEST(LockManagerDeadlockDetectionTest, DISABLED_EdgeTest) {
+TEST(LockManagerDeadlockDetectionTest, EdgeTest) {
   LockManager lock_mgr{};
   TransactionManager txn_mgr{&lock_mgr};
   lock_mgr.txn_manager_ = &txn_mgr;
@@ -56,7 +56,7 @@ TEST(LockManagerDeadlockDetectionTest, DISABLED_EdgeTest) {
   }
 }
 
-TEST(LockManagerDeadlockDetectionTest, DISABLED_BasicDeadlockDetectionTest) {
+TEST(LockManagerDeadlockDetectionTest, BasicDeadlockDetectionTest) {
   LockManager lock_mgr{};
   TransactionManager txn_mgr{&lock_mgr};
   lock_mgr.txn_manager_ = &txn_mgr;
@@ -89,6 +89,7 @@ TEST(LockManagerDeadlockDetectionTest, DISABLED_BasicDeadlockDetectionTest) {
 
     txn_mgr.Commit(txn0);
     EXPECT_EQ(TransactionState::COMMITTED, txn0->GetState());
+    std::cout << "thread 0 finished" << std::endl;
   });
 
   std::thread t1([&] {
@@ -105,7 +106,10 @@ TEST(LockManagerDeadlockDetectionTest, DISABLED_BasicDeadlockDetectionTest) {
     EXPECT_EQ(res, false);
 
     EXPECT_EQ(TransactionState::ABORTED, txn1->GetState());
+    std::cout << "thread 1 aborted" << std::endl;
     txn_mgr.Abort(txn1);
+    std::cout << "thread 1 finished" << std::endl;
+
   });
 
   // Sleep for enough time to break cycle
@@ -114,7 +118,10 @@ TEST(LockManagerDeadlockDetectionTest, DISABLED_BasicDeadlockDetectionTest) {
   t0.join();
   t1.join();
 
+  std::cout << "deleting txn0" << std::endl;
   delete txn0;
   delete txn1;
+  std::cout << "deleting txn1" << std::endl;
+
 }
 }  // namespace bustub
