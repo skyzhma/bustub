@@ -121,7 +121,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   // std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
 
   while (!GrantTableLock(txn, lock_request_queue, lock_request, oid)) {
-
     lock_request_queue->cv_.wait(lock);
     if (txn->GetState() == TransactionState::ABORTED) {
       // txn_manager_->Abort(txn);
@@ -180,7 +179,6 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
         txn->SetState(TransactionState::SHRINKING);
       }
     }
-
 
     // Book Keeping,  delete corresponding lock
     ReleaseTableLock(txn, oid, request->lock_mode_);
@@ -246,7 +244,6 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(tid, AbortReason::TABLE_LOCK_NOT_PRESENT);
   }
-  
 
   // Check Isolation level
   if (ts == TransactionState::SHRINKING) {
@@ -397,7 +394,6 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
     }
 
     if (request->rid_ == rid) {
-
       flag = true;
 
       if (txn->GetIsolationLevel() == IsolationLevel::REPEATABLE_READ &&
@@ -420,7 +416,6 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
 
       break;
     }
-
   }
 
   if (!flag) {
@@ -438,30 +433,25 @@ void LockManager::UnlockAll() {
 }
 
 void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
-
   if (waits_for_.find(t1) == waits_for_.end()) {
     waits_for_.insert({t1, std::vector<txn_id_t>()});
   }
 
   size_t i = BinarySearch(waits_for_[t1], t2);
-    if (i == waits_for_[t1].size() || waits_for_[t1][i] != t2) {
+  if (i == waits_for_[t1].size() || waits_for_[t1][i] != t2) {
     waits_for_[t1].insert(waits_for_[t1].begin() + i, t2);
   }
 }
 
 void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
+  size_t i = BinarySearch(waits_for_[t1], t2);
 
-    size_t i = BinarySearch(waits_for_[t1], t2);
-
-    if (waits_for_[t1][i] == t2) {
-      waits_for_[t1].erase(waits_for_[t1].begin() + i);
-    }
-
-
+  if (waits_for_[t1][i] == t2) {
+    waits_for_[t1].erase(waits_for_[t1].begin() + i);
+  }
 }
 
-auto LockManager::HasCycle(txn_id_t *txn_id) -> bool { 
-
+auto LockManager::HasCycle(txn_id_t *txn_id) -> bool {
   bool flag = false;
   txn_id_t lowest_tid = 2147483647;
 
@@ -476,38 +466,41 @@ auto LockManager::HasCycle(txn_id_t *txn_id) -> bool {
   DFS(lowest_tid, tmp, path, visit, flag);
 
   if (flag) {
-
     bool start = false;
 
     for (auto tid : path) {
-      if (tid == tmp) { start = true; }
-      if (start) { tmp = std::max(tmp, tid); }
+      if (tid == tmp) {
+        start = true;
+      }
+      if (start) {
+        tmp = std::max(tmp, tid);
+      }
     }
 
     *txn_id = tmp;
   }
 
-  return flag; 
-
+  return flag;
 }
 
-void LockManager::DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &visit, bool &flag) {
-
+void LockManager::DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &path,
+                      std::unordered_set<txn_id_t> &visit, bool &flag) {
   if (visit.find(tid) != visit.end()) {
     entrance = tid;
     flag = true;
-    return ;
+    return;
   }
 
   visit.insert(tid);
   path.emplace_back(tid);
   for (auto next : waits_for_[tid]) {
     DFS(next, entrance, path, visit, flag);
-    if (flag) { return; }
+    if (flag) {
+      return;
+    }
   }
   visit.erase(tid);
   path.pop_back();
-
 }
 
 auto LockManager::GetEdgeList() -> std::vector<std::pair<txn_id_t, txn_id_t>> {
@@ -518,20 +511,17 @@ auto LockManager::GetEdgeList() -> std::vector<std::pair<txn_id_t, txn_id_t>> {
       edges.emplace_back(pair.first, value);
     }
   }
-  
+
   return edges;
 }
 
 void LockManager::BuildGraph(std::list<std::shared_ptr<LockRequest>> queue) {
-
   for (auto i = queue.begin(); i != queue.end(); i++) {
-
     if (txn_manager_->GetTransaction((*i)->txn_id_)->GetState() == TransactionState::ABORTED) {
       continue;
     }
 
     for (auto j = queue.begin(); j != i; j++) {
-
       if (txn_manager_->GetTransaction((*j)->txn_id_)->GetState() == TransactionState::ABORTED) {
         continue;
       }
@@ -543,37 +533,31 @@ void LockManager::BuildGraph(std::list<std::shared_ptr<LockRequest>> queue) {
       if ((*j)->granted_ && !((*i)->granted_)) {
         AddEdge((*i)->txn_id_, (*j)->txn_id_);
       }
-
     }
   }
-
 }
 
-void LockManager::RemoveTableRequest(std::shared_ptr<LockRequestQueue>& lock_request_queue, txn_id_t txn_id_) {
-
+void LockManager::RemoveTableRequest(std::shared_ptr<LockRequestQueue> &lock_request_queue, txn_id_t txn_id_) {
   std::lock_guard<std::mutex> locker(lock_request_queue->latch_);
-  for (auto& request : lock_request_queue->request_queue_) {
+  for (auto &request : lock_request_queue->request_queue_) {
     if (request->txn_id_ == txn_id_) {
       lock_request_queue->request_queue_.remove(request);
       break;
     }
   }
   lock_request_queue->cv_.notify_all();
-
 }
 
-void LockManager::RemoveRowRequest(std::shared_ptr<LockRequestQueue>& lock_request_queue, txn_id_t txn_id_, table_oid_t oid, RID rid) {
-
+void LockManager::RemoveRowRequest(std::shared_ptr<LockRequestQueue> &lock_request_queue, txn_id_t txn_id_,
+                                   table_oid_t oid, RID rid) {
   std::lock_guard<std::mutex> locker(lock_request_queue->latch_);
-  for (auto& request : lock_request_queue->request_queue_) {
-    std::cout << txn_id_ << " " << request->txn_id_ << " " << oid << request->oid_ << " " << request->rid_ << " " << rid << std::endl;
+  for (auto &request : lock_request_queue->request_queue_) {
     if (request->txn_id_ == txn_id_ && request->oid_ == oid && request->rid_ == rid) {
       lock_request_queue->request_queue_.remove(request);
       break;
     }
   }
   lock_request_queue->cv_.notify_all();
-
 }
 
 void LockManager::RunCycleDetection() {
@@ -584,73 +568,35 @@ void LockManager::RunCycleDetection() {
 
       // build graph
       table_lock_map_latch_.lock();
-      for (auto& pair : table_lock_map_) {
+      for (auto &pair : table_lock_map_) {
         BuildGraph(pair.second->request_queue_);
       }
 
       row_lock_map_latch_.lock();
-      for (auto& pair : row_lock_map_) {
-        std::cout << pair.first <<" row lock request size : " << pair.second->request_queue_.size() << std::endl;
+      for (auto &pair : row_lock_map_) {
         BuildGraph(pair.second->request_queue_);
       }
 
       txn_id_t tid;
       while (HasCycle(&tid)) {
-
         auto txn = txn_manager_->GetTransaction(tid);
-
-        std::cout << "aborting  " << tid << std::endl;
 
         // Abort the transaction (set abort state and release locks)
         txn->SetState(TransactionState::ABORTED);
 
-        // notify the threads that are blocked on the queue 
-        // Release the lock
-        // std::unordered_set<std::shared_ptr<LockRequestQueue>> request_queue_set;
-        // for (const auto &s_row_lock_set : *txn->GetSharedRowLockSet()) {
-        //   for (auto rid : s_row_lock_set.second) {
-        //     request_queue_set.insert(row_lock_map_[rid]);
-        //   }
-        // }
-        // for (const auto &x_row_lock_set : *txn->GetExclusiveRowLockSet()) {
-        //   for (auto rid : x_row_lock_set.second) {
-        //     request_queue_set.insert(row_lock_map_[rid]);
-        //   }
-        // }
-        // for (auto oid : *txn->GetSharedTableLockSet()) {
-        //   request_queue_set.insert(table_lock_map_[oid]);
-        // }
-        // for (table_oid_t oid : *(txn->GetIntentionSharedTableLockSet())) {
-        //   request_queue_set.insert(table_lock_map_[oid]);
-        // }
-        // for (auto oid : *txn->GetExclusiveTableLockSet()) {
-        //   request_queue_set.insert(table_lock_map_[oid]);
-        // }
-        // for (auto oid : *txn->GetIntentionExclusiveTableLockSet()) {
-        //   request_queue_set.insert(table_lock_map_[oid]);
-        // }
-        // for (auto oid : *txn->GetSharedIntentionExclusiveTableLockSet()) {
-        //   request_queue_set.insert(table_lock_map_[oid]);
-        // }
-
-
-        // std::cout << "releasing all the locks" << std::endl;
-        // for (auto& queue : request_queue_set) {
-        //   queue->cv_.notify_all();
-        // }
+        std::cout << txn << " " << txn->GetExclusiveRowLockSet()->size() << std::endl;
 
         for (auto oid : *txn->GetSharedTableLockSet()) {
           RemoveTableRequest(table_lock_map_[oid], txn->GetTransactionId());
         }
-        
-        std::cout << txn->GetSharedTableLockSet()->size() << std::endl;
+
         txn->GetSharedTableLockSet()->clear();
 
         for (auto oid : *txn->GetExclusiveTableLockSet()) {
           RemoveTableRequest(table_lock_map_[oid], txn->GetTransactionId());
         }
 
-        txn->GetExclusiveRowLockSet()->clear();
+        txn->GetExclusiveTableLockSet()->clear();
 
         for (auto oid : *txn->GetIntentionSharedTableLockSet()) {
           RemoveTableRequest(table_lock_map_[oid], txn->GetTransactionId());
@@ -670,31 +616,31 @@ void LockManager::RunCycleDetection() {
 
         txn->GetSharedIntentionExclusiveTableLockSet()->clear();
 
-        for (auto& pair : *txn->GetSharedRowLockSet()) {
-          for (auto& rid : pair.second) {
+        for (auto &pair : *txn->GetSharedRowLockSet()) {
+          for (auto &rid : pair.second) {
             RemoveRowRequest(row_lock_map_[rid], txn->GetTransactionId(), pair.first, rid);
           }
         }
-
-        std::cout << txn->GetSharedRowLockSet()->size() << std::endl;
 
         txn->GetSharedRowLockSet()->clear();
 
-        for (auto& pair : *txn->GetExclusiveRowLockSet()) {
-          for (auto& rid : pair.second) {
+        for (auto &pair : *txn->GetExclusiveRowLockSet()) {
+          for (auto &rid : pair.second) {
             RemoveRowRequest(row_lock_map_[rid], txn->GetTransactionId(), pair.first, rid);
           }
         }
-        std::cout << txn->GetExclusiveRowLockSet()->size() << std::endl;
 
         txn->GetExclusiveRowLockSet()->clear();
 
         // Remove edge
         auto it = waits_for_.find(tid);
-        if (it != waits_for_.end()) { waits_for_.erase(it); }
+        if (it != waits_for_.end()) {
+          waits_for_.erase(it);
+        }
         for (auto pair : waits_for_) {
-          std::cout << "starting remove neighbor of " << pair.first << std::endl;
-          if (pair.second.empty()) { continue; }
+          if (pair.second.empty()) {
+            continue;
+          }
           size_t ind = BinarySearch(pair.second, tid);
           if (pair.second[ind] == tid) {
             pair.second.erase(pair.second.begin() + ind);
@@ -704,13 +650,11 @@ void LockManager::RunCycleDetection() {
 
       table_lock_map_latch_.unlock();
       row_lock_map_latch_.unlock();
-
     }
   }
 }
 
 auto LockManager::BinarySearch(std::vector<txn_id_t> &neighbors, txn_id_t tid) -> size_t {
-
   size_t i = 0;
   size_t j = neighbors.size();
   while (i < j) {
@@ -723,7 +667,6 @@ auto LockManager::BinarySearch(std::vector<txn_id_t> &neighbors, txn_id_t tid) -
   }
 
   return i;
-
 }
 
 auto LockManager::AreLocksCompatible(LockMode l1, LockMode l2) -> bool {
@@ -768,12 +711,11 @@ auto LockManager::CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_loc
   return false;
 }
 
-auto LockManager::GrantTableLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue, std::shared_ptr<LockRequest> &request,
-                                 const table_oid_t &oid) -> bool {
+auto LockManager::GrantTableLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue,
+                                 std::shared_ptr<LockRequest> &request, const table_oid_t &oid) -> bool {
   bool wait_compatibility = true;
   bool current = false;
   for (auto &queue_request : queue->request_queue_) {
-  
     if (queue_request == request) {
       current = true;
       continue;
@@ -823,17 +765,14 @@ auto LockManager::GrantTableLock(Transaction *txn, std::shared_ptr<LockRequestQu
   return true;
 }
 
-auto LockManager::GrantRowLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue, std::shared_ptr<LockRequest> &request,
-                      const table_oid_t &oid, const RID &rid) -> bool {
-  
+auto LockManager::GrantRowLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue,
+                               std::shared_ptr<LockRequest> &request, const table_oid_t &oid, const RID &rid) -> bool {
   for (auto &queue_request : queue->request_queue_) {
-
     if (queue_request == request) {
       continue;
     }
 
     if (queue_request->granted_) {
-
       if (queue_request->lock_mode_ == LockMode::EXCLUSIVE) {
         return false;
       }
@@ -841,14 +780,13 @@ auto LockManager::GrantRowLock(Transaction *txn, std::shared_ptr<LockRequestQueu
       if (request->lock_mode_ == LockMode::EXCLUSIVE) {
         return false;
       }
-
     }
   }
 
   request->granted_ = true;
   AcquireRowLock(txn, request->lock_mode_, oid, rid);
-  return true;
 
+  return true;
 }
 
 void LockManager::ReleaseTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) {
@@ -867,7 +805,6 @@ void LockManager::ReleaseTableLock(Transaction *txn, const table_oid_t &oid, Loc
 
 void LockManager::ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const RID &rid, LockMode lock_mode) {
   if (lock_mode == LockMode::SHARED) {
-
     auto shared_lock_set = txn->GetSharedRowLockSet();
     if (shared_lock_set->find(oid) != shared_lock_set->end()) {
       if (shared_lock_set->at(oid).find(rid) != shared_lock_set->at(oid).end()) {
@@ -876,9 +813,7 @@ void LockManager::ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const
     }
 
     return;
-
   }
-
 
   auto exclusive_lock_set = txn->GetExclusiveRowLockSet();
   if (exclusive_lock_set->find(oid) != exclusive_lock_set->end()) {
@@ -889,7 +824,6 @@ void LockManager::ReleaseRowLock(Transaction *txn, const table_oid_t &oid, const
 }
 
 void LockManager::AcquireTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) {
-
   if (lock_mode == LockMode::SHARED) {
     txn->GetSharedTableLockSet()->insert(oid);
   } else if (lock_mode == LockMode::EXCLUSIVE) {
@@ -905,7 +839,6 @@ void LockManager::AcquireTableLock(Transaction *txn, const table_oid_t &oid, Loc
 
 void LockManager::AcquireRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) {
   if (lock_mode == LockMode::SHARED) {
-
     auto row_lock_set = txn->GetSharedRowLockSet().get();
     if (row_lock_set->find(oid) == row_lock_set->end()) {
       // auto shared_rid_set = std::make_shared<std::unordered_set<RID>>();
@@ -918,7 +851,6 @@ void LockManager::AcquireRowLock(Transaction *txn, LockMode lock_mode, const tab
 
     txn->GetSharedRowLockSet()->at(oid).insert(rid);
   } else {
-
     auto row_lock_set = txn->GetExclusiveRowLockSet();
     if (row_lock_set->find(oid) == row_lock_set->end()) {
       auto rid_set = std::unordered_set<RID>();

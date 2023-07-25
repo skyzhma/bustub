@@ -82,12 +82,14 @@ TEST(LockManagerDeadlockDetectionTest, BasicDeadlockDetectionTest) {
     // This will block
     res = lock_mgr.LockRow(txn0, LockManager::LockMode::EXCLUSIVE, toid, rid1);
     EXPECT_EQ(true, res);
+    std::cout << "thread 0 lock row" << std::endl;
 
     lock_mgr.UnlockRow(txn0, toid, rid1);
     lock_mgr.UnlockRow(txn0, toid, rid0);
     lock_mgr.UnlockTable(txn0, toid);
 
     txn_mgr.Commit(txn0);
+    std::cout << "thread 0 commit" << std::endl;
     EXPECT_EQ(TransactionState::COMMITTED, txn0->GetState());
     std::cout << "thread 0 finished" << std::endl;
   });
@@ -106,10 +108,7 @@ TEST(LockManagerDeadlockDetectionTest, BasicDeadlockDetectionTest) {
     EXPECT_EQ(res, false);
 
     EXPECT_EQ(TransactionState::ABORTED, txn1->GetState());
-    std::cout << "thread 1 aborted" << std::endl;
     txn_mgr.Abort(txn1);
-    std::cout << "thread 1 finished" << std::endl;
-
   });
 
   // Sleep for enough time to break cycle
@@ -122,6 +121,5 @@ TEST(LockManagerDeadlockDetectionTest, BasicDeadlockDetectionTest) {
   delete txn0;
   delete txn1;
   std::cout << "deleting txn1" << std::endl;
-
 }
 }  // namespace bustub

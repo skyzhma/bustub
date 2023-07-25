@@ -314,7 +314,7 @@ class LockManager {
                       const table_oid_t &oid) -> bool;
 
   auto GrantRowLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &queue, std::shared_ptr<LockRequest> &request,
-                      const table_oid_t &oid, const RID &rid) -> bool;
+                    const table_oid_t &oid, const RID &rid) -> bool;
 
   auto ReleaseTableLock(Transaction *txn, const table_oid_t &oid, LockMode lock_mode) -> void;
 
@@ -326,14 +326,14 @@ class LockManager {
 
   auto BinarySearch(std::vector<txn_id_t> &neighbors, txn_id_t tid) -> size_t;
 
-  auto DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &visit, bool &flag) -> void;
+  auto DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &visit,
+           bool &flag) -> void;
 
   auto BuildGraph(std::list<std::shared_ptr<LockRequest>> queue) -> void;
 
-  auto RemoveTableRequest(std::shared_ptr<LockRequestQueue>& queue, txn_id_t txn_id_) -> void;
+  auto RemoveTableRequest(std::shared_ptr<LockRequestQueue> &queue, txn_id_t txn_id_) -> void;
 
-  auto RemoveRowRequest(std::shared_ptr<LockRequestQueue>& queue, txn_id_t txn_id_, table_oid_t oid, RID rid) -> void;
-
+  auto RemoveRowRequest(std::shared_ptr<LockRequestQueue> &queue, txn_id_t txn_id_, table_oid_t oid, RID rid) -> void;
 
   TransactionManager *txn_manager_;
 
