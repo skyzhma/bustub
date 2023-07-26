@@ -149,6 +149,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
   table_lock_map_latch_.lock();
   if (table_lock_map_.find(oid) == table_lock_map_.end()) {
     table_lock_map_latch_.unlock();
+    txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
   }
 
@@ -190,6 +191,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
   }
 
   if (!flag) {
+    txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
   }
 
@@ -369,9 +371,19 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   // lock the table map
   // std::lock_guard<std::mutex> locker(table_lock_map_latch_);
 
+  if (!txn->IsTableExclusiveLocked(oid) &&
+      !txn->IsTableSharedLocked(oid) &&
+      !txn->IsTableIntentionExclusiveLocked(oid) &&
+      !txn->IsTableIntentionSharedLocked(oid) &&
+      !txn->IsTableIntentionSharedLocked(oid)) {
+      txn->SetState(TransactionState::ABORTED);
+      throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
+  }
+
   row_lock_map_latch_.lock();
   if (row_lock_map_.find(rid) == row_lock_map_.end()) {
     row_lock_map_latch_.unlock();
+    txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
   }
 
@@ -419,6 +431,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   }
 
   if (!flag) {
+    txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
   }
 
@@ -446,7 +459,7 @@ void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
 void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
   size_t i = BinarySearch(waits_for_[t1], t2);
 
-  if (waits_for_[t1][i] == t2) {
+  if (i < waits_for_[t1].size() && waits_for_[t1][i] == t2) {
     waits_for_[t1].erase(waits_for_[t1].begin() + i);
   }
 }
@@ -680,7 +693,7 @@ auto LockManager::AreLocksCompatible(LockMode l1, LockMode l2) -> bool {
     return true;
   }
 
-  if (l1 == LockMode::SHARED && l2 == LockMode::SHARED) {
+  if (l1 == LockMode::SHARED && (l2 == LockMode::SHARED || l2 == LockMode::INTENTION_SHARED)) {
     return true;
   }
 
@@ -692,10 +705,7 @@ auto LockManager::AreLocksCompatible(LockMode l1, LockMode l2) -> bool {
 }
 
 auto LockManager::CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool {
-  if (curr_lock_mode == LockMode::INTENTION_SHARED &&
-      (requested_lock_mode == LockMode::SHARED || requested_lock_mode == LockMode::EXCLUSIVE ||
-       requested_lock_mode == LockMode::INTENTION_EXCLUSIVE ||
-       requested_lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE)) {
+  if (curr_lock_mode == LockMode::INTENTION_SHARED) {
     return true;
   }
 
