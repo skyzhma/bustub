@@ -504,8 +504,11 @@ void LockManager::DFS(txn_id_t tid, txn_id_t &entrance, std::vector<txn_id_t> &p
     return;
   }
 
+  if (waits_for_.find(tid) == waits_for_.end()) { return; }
+
   visit.insert(tid);
   path.emplace_back(tid);
+
   for (auto next : waits_for_[tid]) {
     DFS(next, entrance, path, visit, flag);
     if (flag) {
@@ -655,7 +658,7 @@ void LockManager::RunCycleDetection() {
             continue;
           }
           size_t ind = BinarySearch(pair.second, tid);
-          if (pair.second[ind] == tid) {
+          if (ind < pair.second.size() && pair.second[ind] == tid) {
             pair.second.erase(pair.second.begin() + ind);
           }
         }
